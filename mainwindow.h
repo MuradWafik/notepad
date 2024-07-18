@@ -31,8 +31,15 @@ private slots:
 
     void on_actionSave_triggered();
 
+    void on_plainTextEdit_cursorPositionChanged();
+
+    void on_plainTextEdit_blockCountChanged(int newBlockCount);
+
+    void createLineNumbersOnFileOpen(int lineNumbers);
+
 private:
     Ui::MainWindow *ui;
     QString currentFile = "";
+    int previousNumberOfLines = 0;  // to see if line numbers (block count) are increased or decreased on change
 };
 #endif // MAINWINDOW_H
