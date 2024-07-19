@@ -7,8 +7,14 @@
 #include <QFileDialog>
 #include <QTextStream>
 #include <QMessageBox>
+#include <QObject>
+#include <QScrollBar>
 // #include <QPrinter>
 // #include <QPrintDialog>
+#include <QDebug>
+#include <QTextBlock>
+#include <QDebug>
+#include <QProcess>
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -37,9 +43,17 @@ private slots:
 
     void createLineNumbersOnFileOpen(int lineNumbers);
 
+    void synchronizeScrollbars();
+
+    void initTerminalBox();
+    void on_StdoutAvailable();
+
+    void on_inputTerminalCommand_returnPressed();
+
 private:
     Ui::MainWindow *ui;
     QString currentFile = "";
     int previousNumberOfLines = 0;  // to see if line numbers (block count) are increased or decreased on change
+    QProcess *process;
 };
 #endif // MAINWINDOW_H
