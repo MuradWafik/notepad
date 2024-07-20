@@ -54,12 +54,17 @@ private slots:
 
     void on_pushButton_clicked();
 
+    void on_actionNew_Terminal_triggered();
+    void initOutputBox();
+    void outputProgramContents();
+
 private:
     Ui::MainWindow *ui;
     QString currentFile = "";
     int previousNumberOfLines = 0;  // to see if line numbers (block count) are increased or decreased on change
     QProcess *process;
-    QString lastCommand;
-    bool ignoreNextOutput;
+    QProcess *outputProcess;
+    QString runPythonCommand;
+
 };
 #endif // MAINWINDOW_H

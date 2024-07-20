@@ -48,11 +48,17 @@
         </sizepolicy>
        </property>
        <layout class="QHBoxLayout" name="horizontalLayout_4">
+        <property name="topMargin">
+         <number>0</number>
+        </property>
+        <property name="bottomMargin">
+         <number>0</number>
+        </property>
         <item>
          <layout class="QVBoxLayout" name="verticalLayout_3">
           <item>
-           <layout class="QGridLayout" name="gridLayout">
-            <item row="0" column="0" alignment="Qt::AlignRight">
+           <layout class="QVBoxLayout" name="verticalLayout_7">
+            <item alignment="Qt::AlignRight">
              <widget class="QPushButton" name="pushButton">
               <property name="sizePolicy">
                <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -155,54 +161,15 @@
               <property name="plainText">
                <string/>
               </property>
+              <property name="backgroundVisible">
+               <bool>true</bool>
+              </property>
+              <property name="centerOnScroll">
+               <bool>false</bool>
+              </property>
               <property name="placeholderText">
                <string/>
               </property>
-             </widget>
-            </item>
-           </layout>
-          </item>
-          <item>
-           <layout class="QVBoxLayout" name="verticalLayout_4">
-            <item>
-             <widget class="QTabWidget" name="tabWidget">
-              <property name="currentIndex">
-               <number>0</number>
-              </property>
-              <widget class="QWidget" name="outputTab">
-               <attribute name="title">
-                <string>Output</string>
-               </attribute>
-               <layout class="QVBoxLayout" name="verticalLayout_6">
-                <item>
-                 <widget class="QPlainTextEdit" name="outputText"/>
-                </item>
-               </layout>
-              </widget>
-              <widget class="QWidget" name="terminalTab">
-               <attribute name="title">
-                <string>Terminal</string>
-               </attribute>
-               <layout class="QVBoxLayout" name="verticalLayout_5">
-                <item>
-                 <widget class="QPlainTextEdit" name="terminalBox">
-                  <property name="readOnly">
-                   <bool>true</bool>
-                  </property>
-                  <property name="plainText">
-                   <string/>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QLineEdit" name="inputTerminalCommand">
-                  <property name="text">
-                   <string/>
-                  </property>
-                 </widget>
-                </item>
-               </layout>
-              </widget>
              </widget>
             </item>
            </layout>
@@ -232,6 +199,7 @@
     <addaction name="actionOpen_File"/>
     <addaction name="actionSave"/>
     <addaction name="actionSave_As"/>
+    <addaction name="actionNew_Terminal"/>
    </widget>
    <widget class="QMenu" name="menuEdit">
     <property name="title">
@@ -241,10 +209,88 @@
     <addaction name="actionRedo"/>
     <addaction name="actionSelect_All"/>
    </widget>
+   <widget class="QMenu" name="menuRun">
+    <property name="title">
+     <string>Run</string>
+    </property>
+    <addaction name="actionRun_Python_File"/>
+   </widget>
    <addaction name="menuFile"/>
    <addaction name="menuEdit"/>
+   <addaction name="menuRun"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
+  <widget class="QDockWidget" name="dockWidget_2">
+   <property name="baseSize">
+    <size>
+     <width>157</width>
+     <height>257</height>
+    </size>
+   </property>
+   <property name="features">
+    <set>QDockWidget::DockWidgetClosable</set>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>8</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents_2">
+    <layout class="QVBoxLayout" name="verticalLayout_4">
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
+      <number>0</number>
+     </property>
+     <item>
+      <widget class="QTabWidget" name="tabWidget">
+       <property name="currentIndex">
+        <number>0</number>
+       </property>
+       <widget class="QWidget" name="outputTab">
+        <attribute name="title">
+         <string>Output</string>
+        </attribute>
+        <layout class="QVBoxLayout" name="verticalLayout_6">
+         <item>
+          <widget class="QPlainTextEdit" name="outputText">
+           <property name="font">
+            <font>
+             <pointsize>11</pointsize>
+            </font>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+       <widget class="QWidget" name="terminalTab">
+        <attribute name="title">
+         <string>Terminal</string>
+        </attribute>
+        <layout class="QVBoxLayout" name="verticalLayout_5">
+         <item>
+          <widget class="QPlainTextEdit" name="terminalBox">
+           <property name="readOnly">
+            <bool>true</bool>
+           </property>
+           <property name="plainText">
+            <string/>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLineEdit" name="inputTerminalCommand">
+           <property name="text">
+            <string/>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+  </widget>
   <action name="actionOpen_File">
    <property name="text">
     <string>Open File</string>
@@ -287,6 +333,19 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+N</string>
+   </property>
+  </action>
+  <action name="actionNew_Terminal">
+   <property name="text">
+    <string>New Terminal</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+T</string>
+   </property>
+  </action>
+  <action name="actionRun_Python_File">
+   <property name="text">
+    <string>Run Python File</string>
    </property>
   </action>
  </widget>

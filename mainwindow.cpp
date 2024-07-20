@@ -27,11 +27,25 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow()
 {
+    if (process->isOpen()) {
+        process->write("exit\n");
+        process->waitForFinished();
+    }
+
+    if(outputProcess->isOpen()){
+        outputProcess->write("exit\n");
+        outputProcess->waitForFinished();
+    }
+
+
+
+
     delete ui;
 }
 
 void MainWindow::createLineNumbersOnFileOpen(int lineNumbers){
     this->ui->stackedWidget->setCurrentWidget(this->ui->page_2);
+    this->ui->dockWidget_2->showNormal();
     this->ui->lineNumPlainTextEdit->clear(); // clears the text in case user opens another file
 
     QPlainTextEdit* lineNumLabel = this->ui->lineNumPlainTextEdit;
@@ -39,7 +53,8 @@ void MainWindow::createLineNumbersOnFileOpen(int lineNumbers){
 
 
         QString numberToAdd = QString::number(thisLineNumber);
-        lineNumLabel->appendPlainText(numberToAdd);
+        // lineNumLabel->appendPlainText(numberToAdd);
+        lineNumLabel->appendHtml("<span style = 'text-align: right; align: right;'>" +numberToAdd + "</span>");
     }
 }
 
@@ -74,14 +89,9 @@ void MainWindow::on_actionOpen_File_triggered()
     // connects the scroll bars of the text box the user types in with the line number text
     connect(ui->plainTextEdit->verticalScrollBar(), SIGNAL(sliderMoved(int)), ui->lineNumPlainTextEdit->verticalScrollBar(), SLOT(setValue(int)));
     connect(ui->lineNumPlainTextEdit->verticalScrollBar(), SIGNAL(sliderMoved(int)), ui->plainTextEdit->verticalScrollBar(), SLOT(setValue(int)));
-    // connect(ui->plainTextEdit->verticalScrollBar(), &QScrollBar::valueChanged, ui->lineNumPlainTextEdit->verticalScrollBar(), &QScrollBar::setValue);
-    // connect(ui->lineNumPlainTextEdit->verticalScrollBar(), &QScrollBar::valueChanged, ui->plainTextEdit->verticalScrollBar(), &QScrollBar::setValue);
 
-    // this->ui->lineNumPlainTextEdit->verticalScrollBar()->setValue(this->ui->lineNumPlainTextEdit->verticalScrollBar()->maximum());
-    // this->ui->plainTextEdit->verticalScrollBar()->setValue(this->ui->plainTextEdit->verticalScrollBar()->maximum());
-
-    // synchronizeScrollbars();
     initTerminalBox();
+    initOutputBox(); // the 2 Qprocesses, one for regular commands, one for output from program
 }
 
 
@@ -138,7 +148,6 @@ void MainWindow::on_plainTextEdit_blockCountChanged(int newBlockCount)
 
     // QTextStream(stdout) << "number of lines " + QString::number(previousNumberOfLines) + " vs new amount " + QString::number(newBlockCount) << Qt::endl;
 
-    QTextStream(stdout) << this->ui->plainTextEdit->document()->documentLayout()->documentSize().height();
     QPlainTextEdit* lineNumberText = this->ui->lineNumPlainTextEdit; // reference to the text edit where the line numbers go
     if(previousNumberOfLines > newBlockCount) {
         // they deleted a line, also works for multiple lines since it does a loop
@@ -146,7 +155,7 @@ void MainWindow::on_plainTextEdit_blockCountChanged(int newBlockCount)
         QTextCursor cursor(lineNumberText->textCursor());
         cursor.movePosition(QTextCursor::End, QTextCursor::MoveAnchor);
 
-        for (int i = 0; i < linesToRemove; i++) {
+        for (int i = 0; i < linesToRemove; i++){
             cursor.movePosition(QTextCursor::StartOfLine, QTextCursor::KeepAnchor);
             cursor.removeSelectedText();
             cursor.deletePreviousChar();
@@ -182,6 +191,8 @@ void MainWindow::synchronizeScrollbars()
 void MainWindow::initTerminalBox(){
     process = new QProcess(this);
 
+
+
     process->start("cmd.exe");
     if (!process->waitForStarted()) {
         QMessageBox::critical(this, "Error", "Failed to start the command process.");
@@ -190,7 +201,24 @@ void MainWindow::initTerminalBox(){
     process->setWorkingDirectory(QFileInfo(currentFile).absolutePath());
 
     connect(process, &QProcess::readyReadStandardOutput, this, &MainWindow::on_StdoutAvailable);
+
     // connect(ui->inputTerminalCommand, &QLineEdit::returnPressed, this, &MainWindow::on_inputTerminalCommand_returnPressed);
+}
+
+
+void MainWindow::initOutputBox(){
+    outputProcess = new QProcess(this);
+
+    outputProcess->start("cmd.exe");
+
+    if (!outputProcess->waitForStarted()) {
+        QMessageBox::critical(this, "Error", "Failed to start the output command process.");
+        return;
+    }
+    outputProcess->setWorkingDirectory(QFileInfo(currentFile).absolutePath());
+
+    connect(outputProcess, &QProcess::readyReadStandardOutput, this, &MainWindow::outputProgramContents);
+
 }
 
 
@@ -214,7 +242,7 @@ void MainWindow::on_inputTerminalCommand_returnPressed()
         // int numBytes = process->write(ptr);
         qDebug() << inputByteArray;
         process->write(userText); // inputs the user command into the terminal
-        process->waitForBytesWritten();
+        // process->waitForBytesWritten();
         // process->closeWriteChannel();
 
     }
@@ -225,13 +253,45 @@ void MainWindow::on_inputTerminalCommand_returnPressed()
 
 void MainWindow::setUIChanges(){
     ui->lineNumPlainTextEdit->viewport()->setCursor(Qt::ArrowCursor); // stops cursor from changing when hovering over line number
-    ui->lineNumPlainTextEdit->setStyleSheet("QPlainTextEdit {background-color: black; text-align: center;}");
+    ui->lineNumPlainTextEdit->setStyleSheet("QPlainTextEdit {background-color: black; text-align: right;}");
     ui->lineNumPlainTextEdit->verticalScrollBar()->hide();
+
+    this->ui->dockWidget_2->hide();
+    ui->outputText->setStyleSheet("QPlainTextEdit{background-color: black;}");
 }
 
 void MainWindow::on_pushButton_clicked()
 {
-    this->ui->tabWidget->setCurrentWidget(this->ui->tab);
-    process->execute("pyton -u \"" + currentFile + "\"");
+    if(outputProcess->isOpen()){
+        runPythonCommand = QString("python -u \"%1\"").arg(currentFile);
+        QByteArray runFileCommand(runPythonCommand.toUtf8() + "\n") ;
+        char *userText = runFileCommand.data();
+        qDebug() << runFileCommand;
+        outputProcess->write(userText); // inputs the user command into the terminal
+        outputProcess->waitForBytesWritten();
+        // process->closeWriteChannel();
+
+    }
 }
 
+
+void MainWindow::on_actionNew_Terminal_triggered()
+{
+    this->ui->dockWidget_2->showNormal(); // if they press new terminal, it shows the widget for them both
+}
+
+
+void MainWindow::outputProgramContents(){
+    this->ui->tabWidget->setCurrentWidget(this->ui->outputTab);
+    QByteArray programOutput = outputProcess->readAllStandardOutput();
+
+
+    QString stripped = QString::fromUtf8(programOutput);
+    int indexToRemove = stripped.indexOf(currentFile, 0, Qt::CaseInsensitive); // finds where the file path is in the text, and removes everything before
+    stripped = stripped.remove(0, indexToRemove);
+    // QString stripped = QString::fromUtf8(programOutput).remove(runPythonCommand);
+    // stripped = stripped.remove(currentFile); // "removes filler text from the output box like the filepath and the "python -u PATH" messages
+    // ui->outputText->appendPlainText(stripped); // changes the tab from terminal to output, and adds the command prompt text to the textbox
+    ui->outputText->appendHtml("<span style = 'color: #7FFF00;'>" + stripped + "</span");
+
+}
