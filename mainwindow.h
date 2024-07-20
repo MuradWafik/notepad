@@ -50,10 +50,16 @@ private slots:
 
     void on_inputTerminalCommand_returnPressed();
 
+    void setUIChanges();
+
+    void on_pushButton_clicked();
+
 private:
     Ui::MainWindow *ui;
     QString currentFile = "";
     int previousNumberOfLines = 0;  // to see if line numbers (block count) are increased or decreased on change
     QProcess *process;
+    QString lastCommand;
+    bool ignoreNextOutput;
 };
 #endif // MAINWINDOW_H

@@ -12,29 +12,17 @@ MainWindow::MainWindow(QWidget *parent)
     this->ui->actionSave->setEnabled(false);
 
 
-    // this->ui->lineNumPlainTextEdit->setAlignment(Qt::AlignTop);
-
-    // this
-    // this->setCentralWidget(ui->horizontalLayoutWidget);
     this->setCentralWidget(ui->stackedWidget);
     this->ui->stackedWidget->setCurrentWidget(this->ui->page);
 
 
     QScrollBar* plainTextScrollBar = ui->plainTextEdit->verticalScrollBar();
-    // plainTextScrollBar.set
     QScrollBar* lineNumberScrollBar = ui->lineNumPlainTextEdit->verticalScrollBar();
+
     connect(plainTextScrollBar, &QScrollBar::valueChanged, this, &MainWindow::synchronizeScrollbars);
     connect(lineNumberScrollBar, &QScrollBar::valueChanged, this, &MainWindow::synchronizeScrollbars);
 
-    // connect(plainTextScrollBar, SIGNAL(sliderMoved(int)), lineNumberScrollBar, SLOT(setMaximum(int)));
-    // maybe needed ********
-
-    lineNumberScrollBar->hide();
-
-    ui->lineNumPlainTextEdit->viewport()->setCursor(Qt::ArrowCursor); // stops cursor from changing when hovering over line number
-    ui->lineNumPlainTextEdit->setStyleSheet("QPlainTextEdit {background-color: black; text-align: center;}");
-
-
+    setUIChanges();
 }
 
 MainWindow::~MainWindow()
@@ -43,22 +31,14 @@ MainWindow::~MainWindow()
 }
 
 void MainWindow::createLineNumbersOnFileOpen(int lineNumbers){
-    // QString text = this->ui->lineCountLabel->text();
-    // QString text = this->ui->lineNumberTextEdit->toPlainText();
-
     this->ui->stackedWidget->setCurrentWidget(this->ui->page_2);
-
     this->ui->lineNumPlainTextEdit->clear(); // clears the text in case user opens another file
 
+    QPlainTextEdit* lineNumLabel = this->ui->lineNumPlainTextEdit;
     for(int thisLineNumber = 1; thisLineNumber <= lineNumbers; thisLineNumber++){
-        // QLabel* lineLabel = this->ui->lineCountLabel;
-        // QPlainTextEdit* lineLabel = this->ui->lineNumberTextEdit;
-        QPlainTextEdit* lineNumLabel = this->ui->lineNumPlainTextEdit;
+
 
         QString numberToAdd = QString::number(thisLineNumber);
-        // std::cout<< "line numbers " + numberToAdd.toStdString() + " \n";
-        // lineLabel->setPlainText(lineLabel->toPlainText() + numberToAdd);
-        // lineNumLabel->append(numberToAdd);
         lineNumLabel->appendPlainText(numberToAdd);
     }
 }
@@ -72,6 +52,7 @@ void MainWindow::on_actionOpen_File_triggered()
     if(!file.open(QIODevice::ReadOnly | QFile::Text)){
         // QMessageBox::warning(this, "Warning", "Can Not Open File: ", file.errorString());
         QMessageBox::warning(this, "Warning", "Can Not Open File", file.errorString());
+
         return;
     }
 
@@ -91,15 +72,15 @@ void MainWindow::on_actionOpen_File_triggered()
     file.close();
 
     // connects the scroll bars of the text box the user types in with the line number text
-    // connect(ui->plainTextEdit->verticalScrollBar(), SIGNAL(sliderMoved(int)), ui->lineNumPlainTextEdit->verticalScrollBar(), SLOT(setValue(int)));
-    // connect(ui->lineNumPlainTextEdit->verticalScrollBar(), SIGNAL(sliderMoved(int)), ui->plainTextEdit->verticalScrollBar(), SLOT(setValue(int)));
+    connect(ui->plainTextEdit->verticalScrollBar(), SIGNAL(sliderMoved(int)), ui->lineNumPlainTextEdit->verticalScrollBar(), SLOT(setValue(int)));
+    connect(ui->lineNumPlainTextEdit->verticalScrollBar(), SIGNAL(sliderMoved(int)), ui->plainTextEdit->verticalScrollBar(), SLOT(setValue(int)));
     // connect(ui->plainTextEdit->verticalScrollBar(), &QScrollBar::valueChanged, ui->lineNumPlainTextEdit->verticalScrollBar(), &QScrollBar::setValue);
     // connect(ui->lineNumPlainTextEdit->verticalScrollBar(), &QScrollBar::valueChanged, ui->plainTextEdit->verticalScrollBar(), &QScrollBar::setValue);
 
     // this->ui->lineNumPlainTextEdit->verticalScrollBar()->setValue(this->ui->lineNumPlainTextEdit->verticalScrollBar()->maximum());
     // this->ui->plainTextEdit->verticalScrollBar()->setValue(this->ui->plainTextEdit->verticalScrollBar()->maximum());
 
-    synchronizeScrollbars();
+    // synchronizeScrollbars();
     initTerminalBox();
 }
 
@@ -187,12 +168,6 @@ void MainWindow::on_plainTextEdit_blockCountChanged(int newBlockCount)
 
 void MainWindow::synchronizeScrollbars()
 {
-    // int plaintTextSize = ui->plainTextEdit->verticalScrollBar()->maximum();
-    // int lineNumSize = ui->lineNumPlainTextEdit->verticalScrollBar()->maximum();
-    // // qDebug()<< "plain text size " + QString::number(plaintTextSize);
-
-    // // qDebug()<< "line num size " + QString::number(lineNumSize);
-
     int textEditScrollValue = ui->plainTextEdit->verticalScrollBar()->value();
     int lineNumScrollValue = ui->lineNumPlainTextEdit->verticalScrollBar()->value();
 
@@ -200,29 +175,30 @@ void MainWindow::synchronizeScrollbars()
         ui->lineNumPlainTextEdit->verticalScrollBar()->setValue(textEditScrollValue);
         ui->plainTextEdit->verticalScrollBar()->setValue(textEditScrollValue);
     }
-    // if(plaintTextSize!= lineNumSize){
-    //     ui->plainTextEdit->verticalScrollBar()->setMaximum(plaintTextSize);
-    //     ui->plainTextEdit->verticalScrollBar()->setMaximum(plaintTextSize);
-    // }
 
-    // QCoreApplication::processEvents();
 }
 
 
 void MainWindow::initTerminalBox(){
-
     process = new QProcess(this);
-    connect( process, SIGNAL(readyReadStandardOutput()), this, SLOT(on_StdoutAvailable()) );
-    connect(ui->inputTerminalCommand, SIGNAL(returnPressed()), this, SLOT(on_inputTerminalCommand_returnPressed()));
 
     process->start("cmd.exe");
-    process->setWorkingDirectory(currentFile);
+    if (!process->waitForStarted()) {
+        QMessageBox::critical(this, "Error", "Failed to start the command process.");
+        return;
+    }
+    process->setWorkingDirectory(QFileInfo(currentFile).absolutePath());
 
+    connect(process, &QProcess::readyReadStandardOutput, this, &MainWindow::on_StdoutAvailable);
+    // connect(ui->inputTerminalCommand, &QLineEdit::returnPressed, this, &MainWindow::on_inputTerminalCommand_returnPressed);
 }
+
 
 void MainWindow::on_StdoutAvailable()
 { // when it is ready to be read, it reads the output and prints it to the terminal box
     QByteArray terminalOutput = process->readAllStandardOutput();
+    // process->closeReadChannel(process->StandardOutput);
+    // qDebug() << terminalOutput;
     ui->terminalBox->appendPlainText(terminalOutput);
 }
 
@@ -231,13 +207,31 @@ void MainWindow::on_StdoutAvailable()
 
 void MainWindow::on_inputTerminalCommand_returnPressed()
 {
-    if (process->isOpen())
-    {
-        QByteArray ba(ui->inputTerminalCommand->text().toUtf8()  + '\n') ;
-        char *ptr = ba.data();
-        int numBytes = process->write(ptr);
-    }
-    // ui->terminalBox->clear();
+    if (process->isOpen()){
 
+        QByteArray inputByteArray(ui->inputTerminalCommand->text().toUtf8() + "\n") ;
+        char *userText = inputByteArray.data();
+        // int numBytes = process->write(ptr);
+        qDebug() << inputByteArray;
+        process->write(userText); // inputs the user command into the terminal
+        process->waitForBytesWritten();
+        // process->closeWriteChannel();
+
+    }
+
+    ui->inputTerminalCommand->clear(); // clears the input field for the user
+
+}
+
+void MainWindow::setUIChanges(){
+    ui->lineNumPlainTextEdit->viewport()->setCursor(Qt::ArrowCursor); // stops cursor from changing when hovering over line number
+    ui->lineNumPlainTextEdit->setStyleSheet("QPlainTextEdit {background-color: black; text-align: center;}");
+    ui->lineNumPlainTextEdit->verticalScrollBar()->hide();
+}
+
+void MainWindow::on_pushButton_clicked()
+{
+    this->ui->tabWidget->setCurrentWidget(this->ui->tab);
+    process->execute("pyton -u \"" + currentFile + "\"");
 }
 

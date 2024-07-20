@@ -51,6 +51,40 @@
         <item>
          <layout class="QVBoxLayout" name="verticalLayout_3">
           <item>
+           <layout class="QGridLayout" name="gridLayout">
+            <item row="0" column="0" alignment="Qt::AlignRight">
+             <widget class="QPushButton" name="pushButton">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>60</width>
+                <height>30</height>
+               </size>
+              </property>
+              <property name="baseSize">
+               <size>
+                <width>20</width>
+                <height>20</height>
+               </size>
+              </property>
+              <property name="font">
+               <font>
+                <pointsize>7</pointsize>
+               </font>
+              </property>
+              <property name="text">
+               <string>Run File</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
            <layout class="QHBoxLayout" name="horizontalLayout">
             <property name="spacing">
              <number>0</number>
@@ -133,14 +167,19 @@
             <item>
              <widget class="QTabWidget" name="tabWidget">
               <property name="currentIndex">
-               <number>1</number>
+               <number>0</number>
               </property>
-              <widget class="QWidget" name="tab">
+              <widget class="QWidget" name="outputTab">
                <attribute name="title">
                 <string>Output</string>
                </attribute>
+               <layout class="QVBoxLayout" name="verticalLayout_6">
+                <item>
+                 <widget class="QPlainTextEdit" name="outputText"/>
+                </item>
+               </layout>
               </widget>
-              <widget class="QWidget" name="tab_2">
+              <widget class="QWidget" name="terminalTab">
                <attribute name="title">
                 <string>Terminal</string>
                </attribute>
