@@ -44,8 +44,11 @@ MainWindow::~MainWindow()
 }
 
 void MainWindow::createLineNumbersOnFileOpen(int lineNumbers){
-    this->ui->stackedWidget->setCurrentWidget(this->ui->page_2);
-    this->ui->dockWidget_2->showNormal();
+    this->ui->stackedWidget->setCurrentWidget(this->ui->page_2); // sets the page to the text editor page
+
+    this->ui->dockWidget_4->showNormal();
+    this->ui->dockWidget_2->showNormal(); // shows both docks, file explorer, and output
+
     this->ui->lineNumPlainTextEdit->clear(); // clears the text in case user opens another file
 
     QPlainTextEdit* lineNumLabel = this->ui->lineNumPlainTextEdit;
@@ -92,6 +95,8 @@ void MainWindow::on_actionOpen_File_triggered()
 
     initTerminalBox();
     initOutputBox(); // the 2 Qprocesses, one for regular commands, one for output from program
+
+    getAllFilesInDirectory();
 }
 
 
@@ -257,7 +262,12 @@ void MainWindow::setUIChanges(){
     ui->lineNumPlainTextEdit->verticalScrollBar()->hide();
 
     this->ui->dockWidget_2->hide();
+    this->ui->dockWidget_4->hide();
+
     ui->outputText->setStyleSheet("QPlainTextEdit{background-color: black;}");
+
+    // splitDockWidget(ui->dockWidget_3, ui->dockWidget_2, Qt::Orientation::Horizontal);
+    // tabifyDockWidget()
 }
 
 void MainWindow::on_pushButton_clicked()
@@ -275,23 +285,60 @@ void MainWindow::on_pushButton_clicked()
 }
 
 
-void MainWindow::on_actionNew_Terminal_triggered()
-{
-    this->ui->dockWidget_2->showNormal(); // if they press new terminal, it shows the widget for them both
-}
 
 
 void MainWindow::outputProgramContents(){
     this->ui->tabWidget->setCurrentWidget(this->ui->outputTab);
     QByteArray programOutput = outputProcess->readAllStandardOutput();
 
-
     QString stripped = QString::fromUtf8(programOutput);
     int indexToRemove = stripped.indexOf(currentFile, 0, Qt::CaseInsensitive); // finds where the file path is in the text, and removes everything before
     stripped = stripped.remove(0, indexToRemove);
-    // QString stripped = QString::fromUtf8(programOutput).remove(runPythonCommand);
-    // stripped = stripped.remove(currentFile); // "removes filler text from the output box like the filepath and the "python -u PATH" messages
-    // ui->outputText->appendPlainText(stripped); // changes the tab from terminal to output, and adds the command prompt text to the textbox
+
+    stripped = QString::fromUtf8(programOutput).remove(runPythonCommand);
+    stripped = stripped.remove(currentFile); // "removes filler text from the output box like the filepath and the "python -u PATH" messages
     ui->outputText->appendHtml("<span style = 'color: #7FFF00;'>" + stripped + "</span");
+    setCorner(Qt::BottomLeftCorner, Qt::LeftDockWidgetArea);
+    setCorner(Qt::BottomRightCorner, Qt::RightDockWidgetArea); // makes the file explorer, whether right or left fill the space instead of the terminal
 
 }
+
+void MainWindow::on_actionShow_Terminal_triggered()
+{
+    this->ui->dockWidget_2->showNormal(); // if they press new terminal, it shows the widget for them both
+}
+
+
+void MainWindow::on_actionHide_Terminal_triggered()
+{
+    this->ui->dockWidget_2->hide();
+}
+
+void MainWindow::getAllFilesInDirectory(){
+    // QDir directory(currentFile);
+    QDir directory = QFileInfo(currentFile).dir();
+    QStringList files = directory.entryList(QStringList() << "*.py" << "*.txt",QDir::Files);
+
+
+    QFileSystemModel *model = new QFileSystemModel;
+    model->setRootPath(directory.path());
+    this->ui->fileListTree->setModel(model);
+    // ui->fileListTree->setRootIndex(model->index(QDir::currentPath()));
+    ui->fileListTree->setRootIndex(model->index(directory.path()));
+    // int index = 0;
+    // foreach(QString filename, files) {
+    //     // this->ui->fileListTree.
+
+    //     qDebug() << filename;
+    //     this->ui->fileListTree->setRootIndex();
+
+    //     //do whatever you need to do
+    // }
+    qDebug() << directory.absolutePath();
+
+
+    // auto* dirModel = new QFileSystemModel(this);
+    // dirModel->setFilter(QDir::NoDotAndDotDot |
+    //                     QDir::Files | QDir::Dirs);
+}
+

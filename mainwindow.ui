@@ -13,6 +13,9 @@
   <property name="windowTitle">
    <string>MainWindow</string>
   </property>
+  <property name="dockOptions">
+   <set>QMainWindow::AllowNestedDocks|QMainWindow::AllowTabbedDocks|QMainWindow::AnimatedDocks|QMainWindow::VerticalTabs</set>
+  </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QHBoxLayout" name="horizontalLayout_2">
     <item>
@@ -56,39 +59,35 @@
         </property>
         <item>
          <layout class="QVBoxLayout" name="verticalLayout_3">
-          <item>
-           <layout class="QVBoxLayout" name="verticalLayout_7">
-            <item alignment="Qt::AlignRight">
-             <widget class="QPushButton" name="pushButton">
-              <property name="sizePolicy">
-               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-                <horstretch>0</horstretch>
-                <verstretch>0</verstretch>
-               </sizepolicy>
-              </property>
-              <property name="maximumSize">
-               <size>
-                <width>60</width>
-                <height>30</height>
-               </size>
-              </property>
-              <property name="baseSize">
-               <size>
-                <width>20</width>
-                <height>20</height>
-               </size>
-              </property>
-              <property name="font">
-               <font>
-                <pointsize>7</pointsize>
-               </font>
-              </property>
-              <property name="text">
-               <string>Run File</string>
-              </property>
-             </widget>
-            </item>
-           </layout>
+          <item alignment="Qt::AlignRight">
+           <widget class="QPushButton" name="pushButton">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>60</width>
+              <height>30</height>
+             </size>
+            </property>
+            <property name="baseSize">
+             <size>
+              <width>20</width>
+              <height>20</height>
+             </size>
+            </property>
+            <property name="font">
+             <font>
+              <pointsize>7</pointsize>
+             </font>
+            </property>
+            <property name="text">
+             <string>Run File</string>
+            </property>
+           </widget>
           </item>
           <item>
            <layout class="QHBoxLayout" name="horizontalLayout">
@@ -199,7 +198,6 @@
     <addaction name="actionOpen_File"/>
     <addaction name="actionSave"/>
     <addaction name="actionSave_As"/>
-    <addaction name="actionNew_Terminal"/>
    </widget>
    <widget class="QMenu" name="menuEdit">
     <property name="title">
@@ -214,6 +212,9 @@
      <string>Run</string>
     </property>
     <addaction name="actionRun_Python_File"/>
+    <addaction name="separator"/>
+    <addaction name="actionShow_Terminal"/>
+    <addaction name="actionHide_Terminal"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuEdit"/>
@@ -230,6 +231,9 @@
    <property name="features">
     <set>QDockWidget::DockWidgetClosable</set>
    </property>
+   <property name="allowedAreas">
+    <set>Qt::BottomDockWidgetArea|Qt::RightDockWidgetArea</set>
+   </property>
    <attribute name="dockWidgetArea">
     <number>8</number>
    </attribute>
@@ -244,7 +248,7 @@
      <item>
       <widget class="QTabWidget" name="tabWidget">
        <property name="currentIndex">
-        <number>0</number>
+        <number>1</number>
        </property>
        <widget class="QWidget" name="outputTab">
         <attribute name="title">
@@ -287,6 +291,45 @@
         </layout>
        </widget>
       </widget>
+     </item>
+    </layout>
+   </widget>
+  </widget>
+  <widget class="QDockWidget" name="dockWidget_4">
+   <property name="minimumSize">
+    <size>
+     <width>107</width>
+     <height>130</height>
+    </size>
+   </property>
+   <property name="maximumSize">
+    <size>
+     <width>200</width>
+     <height>524287</height>
+    </size>
+   </property>
+   <property name="baseSize">
+    <size>
+     <width>100</width>
+     <height>0</height>
+    </size>
+   </property>
+   <property name="floating">
+    <bool>false</bool>
+   </property>
+   <property name="features">
+    <set>QDockWidget::DockWidgetClosable|QDockWidget::DockWidgetMovable</set>
+   </property>
+   <property name="allowedAreas">
+    <set>Qt::LeftDockWidgetArea|Qt::RightDockWidgetArea</set>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>1</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents_5">
+    <layout class="QHBoxLayout" name="horizontalLayout_5">
+     <item>
+      <widget class="QTreeView" name="fileListTree"/>
      </item>
     </layout>
    </widget>
@@ -335,19 +378,22 @@
     <string>Ctrl+N</string>
    </property>
   </action>
-  <action name="actionNew_Terminal">
-   <property name="text">
-    <string>New Terminal</string>
-   </property>
-   <property name="shortcut">
-    <string>Ctrl+Shift+T</string>
-   </property>
-  </action>
   <action name="actionRun_Python_File">
    <property name="text">
     <string>Run Python File</string>
    </property>
   </action>
+  <action name="actionHide_Terminal">
+   <property name="text">
+    <string>Hide Terminal</string>
+   </property>
+  </action>
+  <action name="actionShow_Terminal">
+   <property name="text">
+    <string>Show Terminal</string>
+   </property>
+  </action>
+  <zorder>dockWidget_2</zorder>
  </widget>
  <resources/>
  <connections/>

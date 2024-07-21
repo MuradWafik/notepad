@@ -15,6 +15,8 @@
 #include <QTextBlock>
 #include <QDebug>
 #include <QProcess>
+#include <QTreeView>
+#include <QFileSystemModel>
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -54,9 +56,14 @@ private slots:
 
     void on_pushButton_clicked();
 
-    void on_actionNew_Terminal_triggered();
     void initOutputBox();
     void outputProgramContents();
+
+    void on_actionShow_Terminal_triggered();
+
+    void on_actionHide_Terminal_triggered();
+
+    void getAllFilesInDirectory();
 
 private:
     Ui::MainWindow *ui;
