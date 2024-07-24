@@ -22,7 +22,16 @@ MainWindow::MainWindow(QWidget *parent)
     connect(plainTextScrollBar, &QScrollBar::valueChanged, this, &MainWindow::synchronizeScrollbars);
     connect(lineNumberScrollBar, &QScrollBar::valueChanged, this, &MainWindow::synchronizeScrollbars);
 
+    // connects the scroll bars of the text box the user types in with the line number text
+    connect(ui->plainTextEdit->verticalScrollBar(), SIGNAL(sliderMoved(int)), ui->lineNumPlainTextEdit->verticalScrollBar(), SLOT(setValue(int)));
+    connect(ui->lineNumPlainTextEdit->verticalScrollBar(), SIGNAL(sliderMoved(int)), ui->plainTextEdit->verticalScrollBar(), SLOT(setValue(int)));
+
     setUIChanges();
+
+    process = new QProcess(this);
+    outputProcess = new QProcess(this);
+
+
 }
 
 MainWindow::~MainWindow()
@@ -39,11 +48,10 @@ MainWindow::~MainWindow()
 
 
 
-
     delete ui;
 }
 
-void MainWindow::createLineNumbersOnFileOpen(int lineNumbers){
+void MainWindow::createLineNumbersOnFileOpen(const int lineNumbers){
     this->ui->stackedWidget->setCurrentWidget(this->ui->page_2); // sets the page to the text editor page
 
     this->ui->dockWidget_4->showNormal();
@@ -69,34 +77,16 @@ void MainWindow::on_actionOpen_File_triggered()
 
     if(!file.open(QIODevice::ReadOnly | QFile::Text)){
         // QMessageBox::warning(this, "Warning", "Can Not Open File: ", file.errorString());
-        QMessageBox::warning(this, "Warning", "Can Not Open File", file.errorString());
+        QMessageBox::warning(this, "Warning", "Can Not Open File: " + file.errorString());
 
         return;
     }
 
-    currentFile = fileName;
-    this->ui->actionSave->setEnabled(true); // if they successfully opened a file, the save button can be used for it
 
-
-    setWindowTitle(fileName);
-    QTextStream in(&file);
-    QString text = in.readAll();
-    ui->plainTextEdit->setPlainText(text);
-
-
-    previousNumberOfLines = this->ui->plainTextEdit->blockCount();
-    // the number of lines for the line counter, also stores the variable to see if the change was line added or removed
-    createLineNumbersOnFileOpen(previousNumberOfLines);
-    file.close();
-
-    // connects the scroll bars of the text box the user types in with the line number text
-    connect(ui->plainTextEdit->verticalScrollBar(), SIGNAL(sliderMoved(int)), ui->lineNumPlainTextEdit->verticalScrollBar(), SLOT(setValue(int)));
-    connect(ui->lineNumPlainTextEdit->verticalScrollBar(), SIGNAL(sliderMoved(int)), ui->plainTextEdit->verticalScrollBar(), SLOT(setValue(int)));
-
-    initTerminalBox();
-    initOutputBox(); // the 2 Qprocesses, one for regular commands, one for output from program
-
+    openFile(fileName);
     getAllFilesInDirectory();
+
+
 }
 
 
@@ -106,7 +96,7 @@ void MainWindow::on_actionSave_As_triggered()
     QFile file(fileName);
 
     if(!file.open(QFile::WriteOnly | QFile::Text)){
-        QMessageBox::warning(this, "Warning", "Can Not Save File: ", file.errorString());
+        QMessageBox::warning(this, "Warning", "Can Not Save File: " + file.errorString());
         return;
     }
 
@@ -118,6 +108,8 @@ void MainWindow::on_actionSave_As_triggered()
     out<< currentText; // writes to the text file chosen what is in the text box
     file.close();
 
+    fileContentAfterSave = currentText;
+
 }
 
 
@@ -126,7 +118,7 @@ void MainWindow::on_actionSave_triggered()
     QFile file(currentFile);
 
     if(!file.open(QFile::WriteOnly | QFile::Text)){
-        QMessageBox::warning(this, "Warning", "Unable To Save File: ", file.errorString());
+        QMessageBox::warning(this, "Warning", "Unable To Save File: " + file.errorString());
         return;
     }
 
@@ -134,6 +126,10 @@ void MainWindow::on_actionSave_triggered()
     QString currentText = ui->plainTextEdit->toPlainText();
     out<< currentText; // writes to the text file chosen what is in the text box
     file.close();
+
+    fileContentAfterSave = currentText; // stores it to compare if the user has modified the text for switching documents
+    // ie if they try to open something else, will check first if saved text before opening
+    // if ineffieicnet could just use a bool that is set to true here and save as, then swapped to false if any text is typed in the main text box
 
 }
 
@@ -150,8 +146,6 @@ void MainWindow::on_plainTextEdit_blockCountChanged(int newBlockCount)
     if(previousNumberOfLines == 0) {
         return; // so it doesn't append on startup just a singular line with the full amount
     }
-
-    // QTextStream(stdout) << "number of lines " + QString::number(previousNumberOfLines) + " vs new amount " + QString::number(newBlockCount) << Qt::endl;
 
     QPlainTextEdit* lineNumberText = this->ui->lineNumPlainTextEdit; // reference to the text edit where the line numbers go
     if(previousNumberOfLines > newBlockCount) {
@@ -194,27 +188,48 @@ void MainWindow::synchronizeScrollbars()
 
 
 void MainWindow::initTerminalBox(){
+
+    this->ui->terminalBox->clear(); // clears the text in case they are switching files
+    // maybe remove, or leave to a setting if they want to
+
+
+
+    if(process->isOpen()){
+        qDebug() << "open";
+    }
+
     process = new QProcess(this);
-
-
-
     process->start("cmd.exe");
+    connect(process, &QProcess::readyReadStandardOutput, this, &MainWindow::on_StdoutAvailable);
+
+
+
+
+
+
+
     if (!process->waitForStarted()) {
         QMessageBox::critical(this, "Error", "Failed to start the command process.");
         return;
     }
     process->setWorkingDirectory(QFileInfo(currentFile).absolutePath());
 
-    connect(process, &QProcess::readyReadStandardOutput, this, &MainWindow::on_StdoutAvailable);
+
 
     // connect(ui->inputTerminalCommand, &QLineEdit::returnPressed, this, &MainWindow::on_inputTerminalCommand_returnPressed);
 }
 
 
 void MainWindow::initOutputBox(){
-    outputProcess = new QProcess(this);
 
+    this->ui->outputText->clear();
+
+    // qDebug() << " open ";
+    outputProcess = new QProcess(this);
     outputProcess->start("cmd.exe");
+
+
+
 
     if (!outputProcess->waitForStarted()) {
         QMessageBox::critical(this, "Error", "Failed to start the output command process.");
@@ -245,7 +260,7 @@ void MainWindow::on_inputTerminalCommand_returnPressed()
         QByteArray inputByteArray(ui->inputTerminalCommand->text().toUtf8() + "\n") ;
         char *userText = inputByteArray.data();
         // int numBytes = process->write(ptr);
-        qDebug() << inputByteArray;
+
         process->write(userText); // inputs the user command into the terminal
         // process->waitForBytesWritten();
         // process->closeWriteChannel();
@@ -293,7 +308,11 @@ void MainWindow::outputProgramContents(){
 
     QString stripped = QString::fromUtf8(programOutput);
     int indexToRemove = stripped.indexOf(currentFile, 0, Qt::CaseInsensitive); // finds where the file path is in the text, and removes everything before
-    stripped = stripped.remove(0, indexToRemove);
+    // stripped = stripped.remove(0, indexToRemove);
+    if (indexToRemove != -1) {
+        stripped = stripped.remove(0, indexToRemove);
+    }
+
 
     stripped = QString::fromUtf8(programOutput).remove(runPythonCommand);
     stripped = stripped.remove(currentFile); // "removes filler text from the output box like the filepath and the "python -u PATH" messages
@@ -305,6 +324,7 @@ void MainWindow::outputProgramContents(){
 
 void MainWindow::on_actionShow_Terminal_triggered()
 {
+
     this->ui->dockWidget_2->showNormal(); // if they press new terminal, it shows the widget for them both
 }
 
@@ -317,28 +337,163 @@ void MainWindow::on_actionHide_Terminal_triggered()
 void MainWindow::getAllFilesInDirectory(){
     // QDir directory(currentFile);
     QDir directory = QFileInfo(currentFile).dir();
-    QStringList files = directory.entryList(QStringList() << "*.py" << "*.txt",QDir::Files);
+
+    // QStringList files = directory.entryList(QStringList() << "*.py" << "*.txt",QDir::Files);
 
 
-    QFileSystemModel *model = new QFileSystemModel;
-    model->setRootPath(directory.path());
-    this->ui->fileListTree->setModel(model);
+    fileModel = new QFileSystemModel; // the file explorer  on the left for treeview
+    // fileModel->setRootPath(directory.path());
+    fileModel->setRootPath(currentFile);
+
+    this->ui->fileListTree->setModel(fileModel);
+
     // ui->fileListTree->setRootIndex(model->index(QDir::currentPath()));
-    ui->fileListTree->setRootIndex(model->index(directory.path()));
-    // int index = 0;
-    // foreach(QString filename, files) {
-    //     // this->ui->fileListTree.
+    ui->fileListTree->setRootIndex(fileModel->index(directory.path()));
 
-    //     qDebug() << filename;
-    //     this->ui->fileListTree->setRootIndex();
+    // qDebug() << directory.absolutePath();
 
-    //     //do whatever you need to do
-    // }
-    qDebug() << directory.absolutePath();
+}
 
 
-    // auto* dirModel = new QFileSystemModel(this);
-    // dirModel->setFilter(QDir::NoDotAndDotDot |
-    //                     QDir::Files | QDir::Dirs);
+void MainWindow::on_fileListTree_doubleClicked(const QModelIndex &index)
+{
+
+    QString fileToOpenPath = fileModel->filePath(index);
+
+    // the current text on the document was altered and not saved
+    if(ui->plainTextEdit->toPlainText() != fileContentAfterSave){
+        QMessageBox::StandardButton saveFileQuestion = QMessageBox::question(this, "Save Before Swap",
+                                                                             "Would You Like To Save the Previous File Before Switching?",
+                                                                             QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
+        // the default answer is yes, so if they close or somehow dont answer it is a yes
+
+        if(saveFileQuestion == QMessageBox::Yes){
+            qDebug()<< "its a yes";
+        }
+        else{
+            qDebug()<< "its a no";
+        }
+
+
+    }
+
+    openFile(fileToOpenPath);
+
+    // //get full path
+    // QString path = fileModel->filePath(index);
+    // qDebug() << "path " + path;
+
+}
+
+
+void MainWindow::openFile(const QString filePath){
+
+
+    QFile file(filePath);
+
+
+    if(!file.open(QIODevice::ReadOnly | QFile::Text)){
+        QMessageBox::warning(this, "Warning", "Can Not Open File " + file.errorString());
+
+        return;
+    }
+
+
+    this->ui->actionSave->setEnabled(true); // if they successfully opened a file, the save button can be used for it
+    currentFile = filePath;
+    setWindowTitle(filePath);
+    QTextStream in(&file);
+
+    QString text = in.readAll();
+    ui->plainTextEdit->setPlainText(text);
+
+    fileContentAfterSave = text;
+
+
+    previousNumberOfLines = this->ui->plainTextEdit->blockCount();
+    // the number of lines for the line counter, also stores the variable to see if the change was line added or removed
+    createLineNumbersOnFileOpen(previousNumberOfLines);
+    file.close();
+
+
+
+    /* initTerminalBox();
+    initOutputBox();*/ // the 2 Qprocesses, one for regular commands, one for output from program
+
+    updateTerminalAndOutput();
+    // getAllFilesInDirectory();
+
+}
+
+
+void MainWindow::updateTerminalAndOutput(){
+
+
+        qDebug() << "Update Terminal and Output";
+
+        // qDebug() << "Process state: " << process->state();
+        // qDebug() << "Output process state: " << outputProcess->state();
+
+        // if (process->state() == QProcess::Running) {
+        //     process->setWorkingDirectory(QFileInfo(currentFile).absolutePath());
+        //     outputProcess->setWorkingDirectory(QFileInfo(currentFile).absolutePath());
+        // } else if (process->state() == QProcess::NotRunning) {
+        //     qDebug() << "Processes not running. Initializing...";
+        //     initTerminalBox();
+        //     initOutputBox();
+        // }
+
+        if(process->state() == QProcess::Running){
+            process->setWorkingDirectory(QFileInfo(currentFile).absolutePath());
+            outputProcess->setWorkingDirectory(QFileInfo(currentFile).absolutePath());
+        }
+        else if(process->state() == QProcess::Starting){
+            // process->start("cmd.exe");
+            // outputProcess->start("cmd.exe");
+        }
+        else if(process->state() == QProcess::NotRunning){
+            qDebug()<< "here";
+            // if the processes arent running, initialize them
+            initTerminalBox();
+            initOutputBox();
+        }
+
+
+
+}
+
+
+void MainWindow::on_userInputRunningProgram_returnPressed()
+{
+
+
+    if (!outputProcess->isOpen()){
+        return;
+    }
+
+    ui->userInputRunningProgram->clear(); // clears the input field for the user
+
+    QByteArray programOutput = outputProcess->readAllStandardOutput();
+    QByteArray errorOutput = outputProcess->readAllStandardError();
+    QString outputString = QString::fromUtf8(programOutput);
+    QString errorString = QString::fromUtf8(errorOutput);
+
+
+    QByteArray inputByteArray(ui->userInputRunningProgram->text().toUtf8() + "\n") ;
+    char *userText = inputByteArray.data();
+
+
+    outputProcess->write(userText); // inputs the user command into the terminal
+
+
+
+
+    if (programOutput.isEmpty() && errorOutput.isEmpty() && outputProcess->state() == QProcess::Running) {
+        ui->userInputRunningProgram->setEnabled(true);
+        qDebug() << "can input item";
+    } else {
+        ui->userInputRunningProgram->setEnabled(false);
+    }
+
 }
 

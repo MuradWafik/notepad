@@ -43,7 +43,7 @@ private slots:
 
     void on_plainTextEdit_blockCountChanged(int newBlockCount);
 
-    void createLineNumbersOnFileOpen(int lineNumbers);
+    void createLineNumbersOnFileOpen(const int lineNumbers);
 
     void synchronizeScrollbars();
 
@@ -65,6 +65,14 @@ private slots:
 
     void getAllFilesInDirectory();
 
+    void on_fileListTree_doubleClicked(const QModelIndex &index);
+
+    void openFile(const QString filePath);
+
+    void updateTerminalAndOutput();
+
+    void on_userInputRunningProgram_returnPressed();
+
 private:
     Ui::MainWindow *ui;
     QString currentFile = "";
@@ -72,6 +80,12 @@ private:
     QProcess *process;
     QProcess *outputProcess;
     QString runPythonCommand;
+    QString fileContentAfterSave;
+
+
+    QFileSystemModel *fileModel; // the file explorer  on the left for treeview
+
+    QString outputContents; // for the output tab, it compares the diffrence for what the user input is
 
 };
 #endif // MAINWINDOW_H
