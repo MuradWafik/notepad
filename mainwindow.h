@@ -56,8 +56,7 @@ private slots:
 
     void on_pushButton_clicked();
 
-    void initOutputBox();
-    void outputProgramContents();
+
 
     void on_actionShow_Terminal_triggered();
 
@@ -70,15 +69,20 @@ private slots:
     void openFile(const QString filePath);
 
     void updateTerminalAndOutput();
+    void adjustSearchLineEditPosition();
+    void resizeEvent(QResizeEvent*);
 
-    void on_userInputRunningProgram_returnPressed();
+    void searchForText(const QString &text);
+    void removeHighlights();
+
+
 
 private:
     Ui::MainWindow *ui;
     QString currentFile = "";
     int previousNumberOfLines = 0;  // to see if line numbers (block count) are increased or decreased on change
     QProcess *process;
-    QProcess *outputProcess;
+    // QProcess *outputProcess;
     QString runPythonCommand;
     QString fileContentAfterSave;
 
@@ -86,6 +90,10 @@ private:
     QFileSystemModel *fileModel; // the file explorer  on the left for treeview
 
     QString outputContents; // for the output tab, it compares the diffrence for what the user input is
+
+    QLineEdit* searchLineEdit;
+
+    int foundTextMatchCount;
 
 };
 #endif // MAINWINDOW_H

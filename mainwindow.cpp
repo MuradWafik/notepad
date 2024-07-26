@@ -6,6 +6,7 @@
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
+    , process (new QProcess(this))
 {
     ui->setupUi(this);
 
@@ -14,6 +15,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     this->setCentralWidget(ui->stackedWidget);
     this->ui->stackedWidget->setCurrentWidget(this->ui->page);
+
+    searchLineEdit = new QLineEdit(ui->plainTextEdit);
 
 
     QScrollBar* plainTextScrollBar = ui->plainTextEdit->verticalScrollBar();
@@ -28,10 +31,12 @@ MainWindow::MainWindow(QWidget *parent)
 
     setUIChanges();
 
-    process = new QProcess(this);
-    outputProcess = new QProcess(this);
+    connect(searchLineEdit, &QLineEdit::textChanged, this, &MainWindow::searchForText);
+    // connect(searchLineEdit, &QLineEdit::textChanged, this, &MainWindow::searchForText);
+    // connect(searchLineEdit, SIGNAL(textChanged(QString)), this, SLOT(searchForText(QString)));
+    // connect(searchLineEdit, SIGNAL(textChanged(QString)), SLOT(searchForText(QString)));
 
-
+    // process = new QProcess(this);
 }
 
 MainWindow::~MainWindow()
@@ -41,13 +46,7 @@ MainWindow::~MainWindow()
         process->waitForFinished();
     }
 
-    if(outputProcess->isOpen()){
-        outputProcess->write("exit\n");
-        outputProcess->waitForFinished();
-    }
-
-
-
+    delete process;
     delete ui;
 }
 
@@ -72,71 +71,75 @@ void MainWindow::createLineNumbersOnFileOpen(const int lineNumbers){
 void MainWindow::on_actionOpen_File_triggered()
 {
     QString fileName = QFileDialog::getOpenFileName(this, ("Choose File To Open"));
-    QFile file(fileName);
-
-
-    if(!file.open(QIODevice::ReadOnly | QFile::Text)){
-        // QMessageBox::warning(this, "Warning", "Can Not Open File: ", file.errorString());
-        QMessageBox::warning(this, "Warning", "Can Not Open File: " + file.errorString());
-
-        return;
-    }
 
 
     openFile(fileName);
     getAllFilesInDirectory();
-
-
+    adjustSearchLineEditPosition();
 }
 
 
 void MainWindow::on_actionSave_As_triggered()
 {
     QString fileName = QFileDialog::getSaveFileName(this, "Save As");
-    QFile file(fileName);
+    if (fileName.isEmpty()) {
+        qDebug() << "Save As was canceled.";
+        return;  // If the user cancels the save dialog, do nothing.
+    }
 
-    if(!file.open(QFile::WriteOnly | QFile::Text)){
+    QFile file(fileName);
+    if (!file.open(QFile::WriteOnly | QFile::Text)) {
         QMessageBox::warning(this, "Warning", "Can Not Save File: " + file.errorString());
         return;
     }
 
     currentFile = fileName;
-    this->ui->actionSave->setEnabled(true); // just like open, if they saved as, they can just do quick save to save to that location
+    this->ui->actionSave->setEnabled(true); // can save now since a file is selected
     setWindowTitle(fileName);
+
     QTextStream out(&file);
     QString currentText = ui->plainTextEdit->toPlainText();
-    out<< currentText; // writes to the text file chosen what is in the text box
+    out << currentText;  // sets the text content of that file equal to the current text
     file.close();
 
-    fileContentAfterSave = currentText;
+    fileContentAfterSave = currentText;  // updates saved content tracker.
 
+    qDebug() << "File saved successfully: " << fileName;
 }
+
 
 
 void MainWindow::on_actionSave_triggered()
 {
+    qDebug() << "Save triggered.";
+
+    if (currentFile.isEmpty()) {
+        qDebug() << "No current file, triggering Save As.";
+        on_actionSave_As_triggered();  // If no file is currently open, trigger "Save As" dialog.
+        return;
+    }
+
     QFile file(currentFile);
 
-    if(!file.open(QFile::WriteOnly | QFile::Text)){
-        QMessageBox::warning(this, "Warning", "Unable To Save File: " + file.errorString());
+    if (!file.open(QFile::WriteOnly | QFile::Text)) {
+        QMessageBox::warning(this, "Warning", "Unable to save file: " + file.errorString());
         return;
     }
 
     QTextStream out(&file);
     QString currentText = ui->plainTextEdit->toPlainText();
-    out<< currentText; // writes to the text file chosen what is in the text box
+    out << currentText;  // Overwrite the file content with the updated text.
+
     file.close();
 
-    fileContentAfterSave = currentText; // stores it to compare if the user has modified the text for switching documents
-    // ie if they try to open something else, will check first if saved text before opening
-    // if ineffieicnet could just use a bool that is set to true here and save as, then swapped to false if any text is typed in the main text box
-
+    fileContentAfterSave = currentText;  // Update the saved content tracker.
+    qDebug() << "File saved successfully: " << currentFile;
 }
+
+
 
 void MainWindow::on_plainTextEdit_cursorPositionChanged()
 {
-    // std::cout<< this->ui->plainTextEdit->verticalScrollBar().valueChanged;
-    // QTextStream(stdout) << "number of lines " + numberOfLines;
     return;
 
 }
@@ -183,7 +186,6 @@ void MainWindow::synchronizeScrollbars()
         ui->lineNumPlainTextEdit->verticalScrollBar()->setValue(textEditScrollValue);
         ui->plainTextEdit->verticalScrollBar()->setValue(textEditScrollValue);
     }
-
 }
 
 
@@ -192,65 +194,27 @@ void MainWindow::initTerminalBox(){
     this->ui->terminalBox->clear(); // clears the text in case they are switching files
     // maybe remove, or leave to a setting if they want to
 
-
-
-    if(process->isOpen()){
-        qDebug() << "open";
-    }
-
-    process = new QProcess(this);
     process->start("cmd.exe");
-    connect(process, &QProcess::readyReadStandardOutput, this, &MainWindow::on_StdoutAvailable);
-
-
-
-
-
-
+    // process = new QProcess(this);
 
     if (!process->waitForStarted()) {
         QMessageBox::critical(this, "Error", "Failed to start the command process.");
         return;
     }
     process->setWorkingDirectory(QFileInfo(currentFile).absolutePath());
-
-
-
-    // connect(ui->inputTerminalCommand, &QLineEdit::returnPressed, this, &MainWindow::on_inputTerminalCommand_returnPressed);
-}
-
-
-void MainWindow::initOutputBox(){
-
-    this->ui->outputText->clear();
-
-    // qDebug() << " open ";
-    outputProcess = new QProcess(this);
-    outputProcess->start("cmd.exe");
-
-
-
-
-    if (!outputProcess->waitForStarted()) {
-        QMessageBox::critical(this, "Error", "Failed to start the output command process.");
-        return;
-    }
-    outputProcess->setWorkingDirectory(QFileInfo(currentFile).absolutePath());
-
-    connect(outputProcess, &QProcess::readyReadStandardOutput, this, &MainWindow::outputProgramContents);
-
+    connect(process, &QProcess::readyReadStandardOutput, this, &MainWindow::on_StdoutAvailable);
 }
 
 
 void MainWindow::on_StdoutAvailable()
 { // when it is ready to be read, it reads the output and prints it to the terminal box
+    if(!process->isOpen()){
+        qDebug() << "not open";
+        return;
+    }
     QByteArray terminalOutput = process->readAllStandardOutput();
-    // process->closeReadChannel(process->StandardOutput);
-    // qDebug() << terminalOutput;
     ui->terminalBox->appendPlainText(terminalOutput);
 }
-
-
 
 
 void MainWindow::on_inputTerminalCommand_returnPressed()
@@ -279,48 +243,31 @@ void MainWindow::setUIChanges(){
     this->ui->dockWidget_2->hide();
     this->ui->dockWidget_4->hide();
 
-    ui->outputText->setStyleSheet("QPlainTextEdit{background-color: black;}");
+    setCorner(Qt::BottomLeftCorner, Qt::LeftDockWidgetArea);
+    setCorner(Qt::BottomRightCorner, Qt::RightDockWidgetArea); // makes the file explorer, whether right or left fill the space instead of the terminal
 
-    // splitDockWidget(ui->dockWidget_3, ui->dockWidget_2, Qt::Orientation::Horizontal);
-    // tabifyDockWidget()
+    // creates the search bar to search the text
+
+    searchLineEdit->setPlaceholderText("Search Text");
+    searchLineEdit->setFixedHeight(30);
+    searchLineEdit->setFixedWidth(90);
+    // searchLineEdit->hide(); commented out for testing for now
+
 }
 
 void MainWindow::on_pushButton_clicked()
 {
-    if(outputProcess->isOpen()){
+    if(process->isOpen()){
+
         runPythonCommand = QString("python -u \"%1\"").arg(currentFile);
         QByteArray runFileCommand(runPythonCommand.toUtf8() + "\n") ;
         char *userText = runFileCommand.data();
-        qDebug() << runFileCommand;
-        outputProcess->write(userText); // inputs the user command into the terminal
-        outputProcess->waitForBytesWritten();
-        // process->closeWriteChannel();
 
+        process->write(userText); // inputs the user command into the terminal
+        process->waitForBytesWritten();
     }
 }
 
-
-
-
-void MainWindow::outputProgramContents(){
-    this->ui->tabWidget->setCurrentWidget(this->ui->outputTab);
-    QByteArray programOutput = outputProcess->readAllStandardOutput();
-
-    QString stripped = QString::fromUtf8(programOutput);
-    int indexToRemove = stripped.indexOf(currentFile, 0, Qt::CaseInsensitive); // finds where the file path is in the text, and removes everything before
-    // stripped = stripped.remove(0, indexToRemove);
-    if (indexToRemove != -1) {
-        stripped = stripped.remove(0, indexToRemove);
-    }
-
-
-    stripped = QString::fromUtf8(programOutput).remove(runPythonCommand);
-    stripped = stripped.remove(currentFile); // "removes filler text from the output box like the filepath and the "python -u PATH" messages
-    ui->outputText->appendHtml("<span style = 'color: #7FFF00;'>" + stripped + "</span");
-    setCorner(Qt::BottomLeftCorner, Qt::LeftDockWidgetArea);
-    setCorner(Qt::BottomRightCorner, Qt::RightDockWidgetArea); // makes the file explorer, whether right or left fill the space instead of the terminal
-
-}
 
 void MainWindow::on_actionShow_Terminal_triggered()
 {
@@ -373,31 +320,17 @@ void MainWindow::on_fileListTree_doubleClicked(const QModelIndex &index)
         else{
             qDebug()<< "its a no";
         }
-
-
     }
 
     openFile(fileToOpenPath);
-
-    // //get full path
-    // QString path = fileModel->filePath(index);
-    // qDebug() << "path " + path;
-
 }
 
-
 void MainWindow::openFile(const QString filePath){
-
-
     QFile file(filePath);
-
-
     if(!file.open(QIODevice::ReadOnly | QFile::Text)){
         QMessageBox::warning(this, "Warning", "Can Not Open File " + file.errorString());
-
         return;
     }
-
 
     this->ui->actionSave->setEnabled(true); // if they successfully opened a file, the save button can be used for it
     currentFile = filePath;
@@ -415,85 +348,86 @@ void MainWindow::openFile(const QString filePath){
     createLineNumbersOnFileOpen(previousNumberOfLines);
     file.close();
 
-
-
-    /* initTerminalBox();
-    initOutputBox();*/ // the 2 Qprocesses, one for regular commands, one for output from program
-
     updateTerminalAndOutput();
     // getAllFilesInDirectory();
 
 }
 
-
 void MainWindow::updateTerminalAndOutput(){
-
-
-        qDebug() << "Update Terminal and Output";
-
-        // qDebug() << "Process state: " << process->state();
-        // qDebug() << "Output process state: " << outputProcess->state();
-
-        // if (process->state() == QProcess::Running) {
-        //     process->setWorkingDirectory(QFileInfo(currentFile).absolutePath());
-        //     outputProcess->setWorkingDirectory(QFileInfo(currentFile).absolutePath());
-        // } else if (process->state() == QProcess::NotRunning) {
-        //     qDebug() << "Processes not running. Initializing...";
-        //     initTerminalBox();
-        //     initOutputBox();
-        // }
-
-        if(process->state() == QProcess::Running){
-            process->setWorkingDirectory(QFileInfo(currentFile).absolutePath());
-            outputProcess->setWorkingDirectory(QFileInfo(currentFile).absolutePath());
-        }
-        else if(process->state() == QProcess::Starting){
-            // process->start("cmd.exe");
-            // outputProcess->start("cmd.exe");
-        }
-        else if(process->state() == QProcess::NotRunning){
-            qDebug()<< "here";
-            // if the processes arent running, initialize them
-            initTerminalBox();
-            initOutputBox();
-        }
-
-
-
+    if(process->state() == QProcess::Running){
+        process->setWorkingDirectory(QFileInfo(currentFile).absolutePath());
+    }
+    else if(process->state() == QProcess::Starting){
+        process->start("cmd.exe");
+    }
+    else if(process->state() == QProcess::NotRunning){
+        // if the process isnt running, initialize it
+        initTerminalBox();
+    }
 }
 
 
-void MainWindow::on_userInputRunningProgram_returnPressed()
+void MainWindow::adjustSearchLineEditPosition()
 {
-
-
-    if (!outputProcess->isOpen()){
-        return;
-    }
-
-    ui->userInputRunningProgram->clear(); // clears the input field for the user
-
-    QByteArray programOutput = outputProcess->readAllStandardOutput();
-    QByteArray errorOutput = outputProcess->readAllStandardError();
-    QString outputString = QString::fromUtf8(programOutput);
-    QString errorString = QString::fromUtf8(errorOutput);
-
-
-    QByteArray inputByteArray(ui->userInputRunningProgram->text().toUtf8() + "\n") ;
-    char *userText = inputByteArray.data();
-
-
-    outputProcess->write(userText); // inputs the user command into the terminal
-
-
-
-
-    if (programOutput.isEmpty() && errorOutput.isEmpty() && outputProcess->state() == QProcess::Running) {
-        ui->userInputRunningProgram->setEnabled(true);
-        qDebug() << "can input item";
-    } else {
-        ui->userInputRunningProgram->setEnabled(false);
-    }
-
+    const int margin = 10; // Margin from the top and right edges
+    QPoint topRight = ui->plainTextEdit->rect().topRight();
+    searchLineEdit->move(topRight.x() - searchLineEdit->width() - margin, topRight.y() + margin);
 }
+
+
+void MainWindow::resizeEvent(QResizeEvent *event)
+{
+    QMainWindow::resizeEvent(event);
+    adjustSearchLineEditPosition();
+}
+
+
+void MainWindow::searchForText(const QString &text){
+
+    removeHighlights();
+    foundTextMatchCount = 0;  // resets it
+    if (text.isEmpty()) {
+
+        return; // no need to search for empty text
+    }
+
+    QTextDocument *document = ui->plainTextEdit->document();
+    QTextCursor highlightCursor(document);
+    QTextCursor cursor(document);
+
+    cursor.beginEditBlock();
+
+    QTextCharFormat plainFormat(highlightCursor.charFormat());
+    QTextCharFormat colorFormat = plainFormat;
+    colorFormat.setBackground(Qt::blue);
+
+    while (!highlightCursor.isNull() && !highlightCursor.atEnd()) {
+        highlightCursor = document->find(text, highlightCursor);
+        if (!highlightCursor.isNull()) {
+
+            // highlightCursor.movePosition(QTextCursor::WordRight, QTextCursor::KeepAnchor);
+            highlightCursor.mergeCharFormat(colorFormat);
+            foundTextMatchCount++;  // Increment count for each match
+        }
+    }
+
+    cursor.endEditBlock();
+    statusBar()->showMessage(QString("Occurrences: %1").arg(foundTextMatchCount));
+}
+
+void MainWindow::removeHighlights() {
+    QTextDocument *document = ui->plainTextEdit->document();
+    QTextCursor cursor(document);
+
+    cursor.beginEditBlock();
+
+    QTextCharFormat plainFormat;
+    plainFormat.setBackground(Qt::transparent); // Set background to transparent to remove highlight
+
+    cursor.select(QTextCursor::Document);
+    cursor.mergeCharFormat(plainFormat);
+
+    cursor.endEditBlock();
+}
+
 
