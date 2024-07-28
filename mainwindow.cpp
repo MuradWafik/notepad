@@ -24,6 +24,12 @@ MainWindow::MainWindow(QWidget *parent)
     setUIChanges();
 
     connect(searchLineEdit, &QLineEdit::textChanged, this, &MainWindow::searchForText);
+
+
+    ignoreTextChanged = false; //flag to stop the text edited within, to activate the signal and get stuck in a recursive loop
+    // convertTabsToSpaces();
+    connect(this->ui->plainTextEdit, &QPlainTextEdit::textChanged, this, &MainWindow::convertTabsToSpaces);
+
 }
 
 MainWindow::~MainWindow()
@@ -163,6 +169,10 @@ void MainWindow::initTerminalBox(){
     }
     process->setWorkingDirectory(QFileInfo(currentFile).absolutePath());
     connect(process, &QProcess::readyReadStandardOutput, this, &MainWindow::on_StdoutAvailable);
+    connect(process, &QProcess::readyReadStandardError, this, &MainWindow::on_StderrAvailable); // Connect the error output signal
+
+
+
 }
 
 
@@ -174,6 +184,18 @@ void MainWindow::on_StdoutAvailable()
     }
     QByteArray terminalOutput = process->readAllStandardOutput();
     ui->terminalBox->appendPlainText(terminalOutput);
+}
+
+void MainWindow::on_StderrAvailable(){
+
+    if(!process->isOpen()){
+        qDebug() << "not open";
+        return;
+    }
+    QByteArray terminalOutput = process->readAllStandardError();
+    // outputs the error to the terminal in red
+    ui->terminalBox->appendHtml("<span style = 'color: red;'>" + terminalOutput + "</span>");
+
 }
 
 
@@ -200,6 +222,18 @@ void MainWindow::setUIChanges(){
     setCorner(Qt::BottomRightCorner, Qt::RightDockWidgetArea); // makes the file explorer, whether right or left fill the space instead of the terminal
 
     searchAndReplaceContainer->hide();
+
+    // auto textEdit = ui->plainTextEdit;
+    // textEdit->setTabStopDistance(textEdit->font().letterSpacing() * 4);
+    QFont font = ui->plainTextEdit->font();
+
+    // Use QFontMetrics to get the width of a space character
+    QFontMetrics metrics(font);
+    int spaceWidth = metrics.horizontalAdvance(' ');
+
+    // Set the tab stop distance to 4 spaces
+    ui->plainTextEdit->setTabStopDistance(4 * spaceWidth);
+        // Qt::QFontMetricsF(textedit.font()).horizontalAdvance(' ') * 4)
 }
 
 void MainWindow::on_pushButton_clicked()
@@ -233,13 +267,46 @@ void MainWindow::getAllFilesInDirectory(){
     // QStringList files = directory.entryList(QStringList() << "*.py" << "*.txt",QDir::Files);
 
 
-    fileModel = new QFileSystemModel; // the file explorer  on the left for treeview
+    fileModel = new QFileSystemModel(); // the file explorer  on the left for treeview
+    // fileModel->setFilter(QDir::Hidden);
+    QStringList filePaths(Qt::CaseInsensitive);
+    filePaths << "*.py";
+    filePaths << "*.txt";
+    filePaths << "*.md";
+    filePaths << "*.csv";
+    fileModel->setNameFilters(filePaths);
+    fileModel->setNameFilterDisables(false); // makes the files that arent within filter hidden instead of shown as disabled
     // fileModel->setRootPath(directory.path());
     fileModel->setRootPath(currentFile);
+
 
     this->ui->fileListTree->setModel(fileModel);
 
     ui->fileListTree->setRootIndex(fileModel->index(directory.path()));
+}
+
+void MainWindow::getAllFilesInDirectory(QString directory){
+    // QDir directory(currentFile);
+
+    // QStringList files = directory.entryList(QStringList() << "*.py" << "*.txt",QDir::Files);
+
+
+    fileModel = new QFileSystemModel(); // the file explorer  on the left for treeview
+    // fileModel->setFilter(QDir::Hidden);
+    QStringList filePaths(Qt::CaseInsensitive);
+    filePaths << "*.py";
+    filePaths << "*.txt";
+    filePaths << "*.md";
+    filePaths << "*.csv";
+    fileModel->setNameFilters(filePaths);
+    fileModel->setNameFilterDisables(false); // makes the files that arent within filter hidden instead of shown as disabled
+    // fileModel->setRootPath(directory.path());
+    fileModel->setRootPath(currentFile);
+
+
+    this->ui->fileListTree->setModel(fileModel);
+
+    ui->fileListTree->setRootIndex(fileModel->index(directory));
 }
 
 
@@ -308,12 +375,6 @@ void MainWindow::updateTerminalAndOutput(){
 
 void MainWindow::adjustSearchLineEditPosition()
 {
-    // searchAndReplaceParent->setGeometry()
-    // searchAndReplaceParent->addWidget(searchLineEdit);
-    // creates the search bar to search the text
-
-
-
     // searchLineEdit->hide(); commented out for testing for now
     const int margin = 10; // Margin from the top and right edges
     QPoint topRight = ui->plainTextEdit->rect().topRight();
@@ -322,7 +383,6 @@ void MainWindow::adjustSearchLineEditPosition()
     // searchAndReplaceContainer->move(topRight.x() - searchAndReplaceContainer->width() - margin, topRight.y() + margin);
     searchAndReplaceParent->setSpacing(2);
     checkBoxesParent->setSpacing(2);
-
 }
 
 
@@ -442,7 +502,7 @@ void MainWindow::replaceText(){
 }
 
 void MainWindow::createSearchAndReplaceWidgets(){
-    // Structure
+// Structure
     // BLANK PARENT WIDGET
     //  - Horizontal Layout
     //      - Vertical Layout
@@ -471,23 +531,29 @@ void MainWindow::createSearchAndReplaceWidgets(){
 
     isCaseSensitive = new QCheckBox();
     isCaseSensitive->setToolTip("Case Sensitive");
-    connect(isCaseSensitive, &QCheckBox::clicked, this, [this](){
-        searchForText(searchLineEdit->text());
-    });
+    QIcon caseSensitveIcon = QIcon(":/imgs/gui-case-sensitive.svg");
+    isCaseSensitive->setIcon(caseSensitveIcon);
+
 
     isMatchWholeWord = new QCheckBox();
     isMatchWholeWord->setToolTip("Match Whole Word");
+    QIcon matchWholeIcon = QIcon(":/imgs/whole-word.svg");
+    isMatchWholeWord->setIcon(matchWholeIcon);
+
+
     connect(isMatchWholeWord, &QCheckBox::clicked, this, [this](){
         searchForText(searchLineEdit->text());
     });
+    connect(isCaseSensitive, &QCheckBox::clicked, this, [this](){
+        searchForText(searchLineEdit->text());
+    }); // re does the search if either button is clicked
+
 
     qApp->setStyleSheet(" QCheckBox:hover{background-color: light-grey;}");
 
     QIcon closeIcon = qApp->style()->standardIcon(QStyle::SP_TitleBarCloseButton);
     hidePopUpButton = new QPushButton();
     hidePopUpButton->setIcon(closeIcon);
-
-    // hidePopUpButton.hove
     hidePopUpButton->setStyleSheet(" QPushButton:hover:!pressed{background-color: red;}");
     connect(hidePopUpButton, &QPushButton::pressed, this, [this](){
         searchAndReplaceContainer->hide();   // lambda to hide the search and replace item
@@ -527,6 +593,51 @@ void MainWindow::on_actionFind_Replace_triggered()
         adjustSearchLineEditPosition(); // places it at correct location
         searchLineEdit->setFocus(); // makes the line edit for the text to search be the focus
     }
+}
 
+void MainWindow::convertTabsToSpaces(){
+    if (ignoreTextChanged) {
+        return;
+    }
+
+    ignoreTextChanged = true;
+
+    QTextCursor cursor = ui->plainTextEdit->textCursor();
+    QString text = ui->plainTextEdit->toPlainText();
+
+    // replaces the tabs with 4 spaces
+    text.replace("\t", "    ");
+
+    // temporarily disconnect textChanged signal to avoid recursion
+    disconnect(ui->plainTextEdit, &QPlainTextEdit::textChanged, this, &MainWindow::convertTabsToSpaces);
+    ui->plainTextEdit->setPlainText(text);
+    ui->plainTextEdit->setTextCursor(cursor);
+    connect(ui->plainTextEdit, &QPlainTextEdit::textChanged, this, &MainWindow::convertTabsToSpaces);
+
+    // re-trigger searchForText to apply highlights
+    searchForText(searchLineEdit->text());
+
+    ignoreTextChanged = false;
+
+}
+
+
+void MainWindow::on_actionOpen_Folder_triggered()
+{
+    QString dir = QFileDialog::getExistingDirectory(this, tr("Open Directory"),
+                                                    "/home",
+                                                    QFileDialog::ShowDirsOnly
+                                                        | QFileDialog::DontResolveSymlinks);
+    if(dir.isEmpty()){
+        QMessageBox::warning(this, "Warning", "Unable To Open Folder");
+        return;
+    }
+    qDebug() << dir;
+
+    this->ui->stackedWidget->setCurrentWidget(this->ui->page_2); // sets the page to the text editor page
+    this->ui->dockWidget_4->showNormal();
+    updateTerminalAndOutput();
+
+    getAllFilesInDirectory(dir);
 }
 

@@ -7,7 +7,6 @@
 #include <QFileDialog>
 #include <QTextStream>
 #include <QMessageBox>
-// #include <QObject>
 #include <QVBoxLayout>
 #include <QScrollBar>
 // #include <QPrinter>
@@ -20,6 +19,7 @@
 #include <QFileSystemModel>
 #include <QCheckBox>
 #include <QVector>
+// #include <QStringList>
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -52,6 +52,7 @@ private slots:
 
     void initTerminalBox();
     void on_StdoutAvailable();
+    void on_StderrAvailable(); // errors from the terminal
 
     void on_inputTerminalCommand_returnPressed();
 
@@ -66,6 +67,7 @@ private slots:
     void on_actionHide_Terminal_triggered();
 
     void getAllFilesInDirectory();
+    void getAllFilesInDirectory(QString directory);
 
     void on_fileListTree_doubleClicked(const QModelIndex &index);
 
@@ -84,6 +86,9 @@ private slots:
 
 
     void on_actionFind_Replace_triggered();
+    void convertTabsToSpaces();
+
+    void on_actionOpen_Folder_triggered();
 
 private:
     Ui::MainWindow *ui;
@@ -112,6 +117,7 @@ private:
 
     int foundTextMatchCount;
     QVector<QTextCursor> foundOccurrences;
+    bool ignoreTextChanged;
 
 };
 #endif // MAINWINDOW_H
