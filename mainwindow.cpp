@@ -1,8 +1,6 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
-// using namespace std;
-
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
@@ -11,32 +9,21 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
 
     this->ui->actionSave->setEnabled(false);
-
-
     this->setCentralWidget(ui->stackedWidget);
     this->ui->stackedWidget->setCurrentWidget(this->ui->page);
 
-    searchLineEdit = new QLineEdit(ui->plainTextEdit);
-
+    createSearchAndReplaceWidgets();
 
     QScrollBar* plainTextScrollBar = ui->plainTextEdit->verticalScrollBar();
     QScrollBar* lineNumberScrollBar = ui->lineNumPlainTextEdit->verticalScrollBar();
 
     connect(plainTextScrollBar, &QScrollBar::valueChanged, this, &MainWindow::synchronizeScrollbars);
     connect(lineNumberScrollBar, &QScrollBar::valueChanged, this, &MainWindow::synchronizeScrollbars);
-
     // connects the scroll bars of the text box the user types in with the line number text
-    connect(ui->plainTextEdit->verticalScrollBar(), SIGNAL(sliderMoved(int)), ui->lineNumPlainTextEdit->verticalScrollBar(), SLOT(setValue(int)));
-    connect(ui->lineNumPlainTextEdit->verticalScrollBar(), SIGNAL(sliderMoved(int)), ui->plainTextEdit->verticalScrollBar(), SLOT(setValue(int)));
 
     setUIChanges();
 
     connect(searchLineEdit, &QLineEdit::textChanged, this, &MainWindow::searchForText);
-    // connect(searchLineEdit, &QLineEdit::textChanged, this, &MainWindow::searchForText);
-    // connect(searchLineEdit, SIGNAL(textChanged(QString)), this, SLOT(searchForText(QString)));
-    // connect(searchLineEdit, SIGNAL(textChanged(QString)), SLOT(searchForText(QString)));
-
-    // process = new QProcess(this);
 }
 
 MainWindow::~MainWindow()
@@ -63,15 +50,13 @@ void MainWindow::createLineNumbersOnFileOpen(const int lineNumbers){
 
 
         QString numberToAdd = QString::number(thisLineNumber);
-        // lineNumLabel->appendPlainText(numberToAdd);
-        lineNumLabel->appendHtml("<span style = 'text-align: right; align: right;'>" +numberToAdd + "</span>");
+        lineNumLabel->appendPlainText(numberToAdd);
     }
 }
 
 void MainWindow::on_actionOpen_File_triggered()
 {
     QString fileName = QFileDialog::getOpenFileName(this, ("Choose File To Open"));
-
 
     openFile(fileName);
     getAllFilesInDirectory();
@@ -83,7 +68,6 @@ void MainWindow::on_actionSave_As_triggered()
 {
     QString fileName = QFileDialog::getSaveFileName(this, "Save As");
     if (fileName.isEmpty()) {
-        qDebug() << "Save As was canceled.";
         return;  // If the user cancels the save dialog, do nothing.
     }
 
@@ -104,44 +88,20 @@ void MainWindow::on_actionSave_As_triggered()
 
     fileContentAfterSave = currentText;  // updates saved content tracker.
 
-    qDebug() << "File saved successfully: " << fileName;
 }
 
 
 
 void MainWindow::on_actionSave_triggered()
 {
-    qDebug() << "Save triggered.";
-
-    if (currentFile.isEmpty()) {
-        qDebug() << "No current file, triggering Save As.";
-        on_actionSave_As_triggered();  // If no file is currently open, trigger "Save As" dialog.
-        return;
-    }
-
-    QFile file(currentFile);
-
-    if (!file.open(QFile::WriteOnly | QFile::Text)) {
-        QMessageBox::warning(this, "Warning", "Unable to save file: " + file.errorString());
-        return;
-    }
-
-    QTextStream out(&file);
-    QString currentText = ui->plainTextEdit->toPlainText();
-    out << currentText;  // Overwrite the file content with the updated text.
-
-    file.close();
-
-    fileContentAfterSave = currentText;  // Update the saved content tracker.
-    qDebug() << "File saved successfully: " << currentFile;
+    saveFile();
 }
 
 
 
 void MainWindow::on_plainTextEdit_cursorPositionChanged()
-{
+{ // possibly later a tracker for current line num and column
     return;
-
 }
 
 void MainWindow::on_plainTextEdit_blockCountChanged(int newBlockCount)
@@ -220,24 +180,17 @@ void MainWindow::on_StdoutAvailable()
 void MainWindow::on_inputTerminalCommand_returnPressed()
 {
     if (process->isOpen()){
-
         QByteArray inputByteArray(ui->inputTerminalCommand->text().toUtf8() + "\n") ;
         char *userText = inputByteArray.data();
-        // int numBytes = process->write(ptr);
 
         process->write(userText); // inputs the user command into the terminal
-        // process->waitForBytesWritten();
-        // process->closeWriteChannel();
-
     }
-
     ui->inputTerminalCommand->clear(); // clears the input field for the user
-
 }
 
 void MainWindow::setUIChanges(){
     ui->lineNumPlainTextEdit->viewport()->setCursor(Qt::ArrowCursor); // stops cursor from changing when hovering over line number
-    ui->lineNumPlainTextEdit->setStyleSheet("QPlainTextEdit {background-color: black; text-align: right;}");
+    ui->lineNumPlainTextEdit->setStyleSheet("QPlainTextEdit {background-color: black;}");
     ui->lineNumPlainTextEdit->verticalScrollBar()->hide();
 
     this->ui->dockWidget_2->hide();
@@ -246,19 +199,12 @@ void MainWindow::setUIChanges(){
     setCorner(Qt::BottomLeftCorner, Qt::LeftDockWidgetArea);
     setCorner(Qt::BottomRightCorner, Qt::RightDockWidgetArea); // makes the file explorer, whether right or left fill the space instead of the terminal
 
-    // creates the search bar to search the text
-
-    searchLineEdit->setPlaceholderText("Search Text");
-    searchLineEdit->setFixedHeight(30);
-    searchLineEdit->setFixedWidth(90);
-    // searchLineEdit->hide(); commented out for testing for now
-
+    searchAndReplaceContainer->hide();
 }
 
 void MainWindow::on_pushButton_clicked()
 {
     if(process->isOpen()){
-
         runPythonCommand = QString("python -u \"%1\"").arg(currentFile);
         QByteArray runFileCommand(runPythonCommand.toUtf8() + "\n") ;
         char *userText = runFileCommand.data();
@@ -271,7 +217,6 @@ void MainWindow::on_pushButton_clicked()
 
 void MainWindow::on_actionShow_Terminal_triggered()
 {
-
     this->ui->dockWidget_2->showNormal(); // if they press new terminal, it shows the widget for them both
 }
 
@@ -294,17 +239,12 @@ void MainWindow::getAllFilesInDirectory(){
 
     this->ui->fileListTree->setModel(fileModel);
 
-    // ui->fileListTree->setRootIndex(model->index(QDir::currentPath()));
     ui->fileListTree->setRootIndex(fileModel->index(directory.path()));
-
-    // qDebug() << directory.absolutePath();
-
 }
 
 
 void MainWindow::on_fileListTree_doubleClicked(const QModelIndex &index)
 {
-
     QString fileToOpenPath = fileModel->filePath(index);
 
     // the current text on the document was altered and not saved
@@ -315,10 +255,10 @@ void MainWindow::on_fileListTree_doubleClicked(const QModelIndex &index)
         // the default answer is yes, so if they close or somehow dont answer it is a yes
 
         if(saveFileQuestion == QMessageBox::Yes){
-            qDebug()<< "its a yes";
+            saveFile();
         }
         else{
-            qDebug()<< "its a no";
+            // does nothing for now ,, just moves on and opens the other file
         }
     }
 
@@ -341,7 +281,6 @@ void MainWindow::openFile(const QString filePath){
     ui->plainTextEdit->setPlainText(text);
 
     fileContentAfterSave = text;
-
 
     previousNumberOfLines = this->ui->plainTextEdit->blockCount();
     // the number of lines for the line counter, also stores the variable to see if the change was line added or removed
@@ -369,9 +308,21 @@ void MainWindow::updateTerminalAndOutput(){
 
 void MainWindow::adjustSearchLineEditPosition()
 {
+    // searchAndReplaceParent->setGeometry()
+    // searchAndReplaceParent->addWidget(searchLineEdit);
+    // creates the search bar to search the text
+
+
+
+    // searchLineEdit->hide(); commented out for testing for now
     const int margin = 10; // Margin from the top and right edges
     QPoint topRight = ui->plainTextEdit->rect().topRight();
-    searchLineEdit->move(topRight.x() - searchLineEdit->width() - margin, topRight.y() + margin);
+
+    searchAndReplaceContainer->move(topRight.x() - searchAndReplaceContainer->width() - margin, topRight.y() + margin);
+    // searchAndReplaceContainer->move(topRight.x() - searchAndReplaceContainer->width() - margin, topRight.y() + margin);
+    searchAndReplaceParent->setSpacing(2);
+    checkBoxesParent->setSpacing(2);
+
 }
 
 
@@ -384,11 +335,13 @@ void MainWindow::resizeEvent(QResizeEvent *event)
 
 void MainWindow::searchForText(const QString &text){
 
-    removeHighlights();
+    removeHighlights(); // removes any text that was previously highlighted
     foundTextMatchCount = 0;  // resets it
+    foundOccurrences.clear(); // clears the vector storing all instances
+
     if (text.isEmpty()) {
 
-        return; // no need to search for empty text
+        return; // returns if empty string
     }
 
     QTextDocument *document = ui->plainTextEdit->document();
@@ -401,13 +354,28 @@ void MainWindow::searchForText(const QString &text){
     QTextCharFormat colorFormat = plainFormat;
     colorFormat.setBackground(Qt::blue);
 
-    while (!highlightCursor.isNull() && !highlightCursor.atEnd()) {
-        highlightCursor = document->find(text, highlightCursor);
-        if (!highlightCursor.isNull()) {
+    bool caseSensitive = isCaseSensitive->isChecked();
+    bool matchWhole = isMatchWholeWord->isChecked();
+    // QTextDocument* doc = this->ui->plainTextEdit->document();
+    QTextDocument::FindFlags flag;
 
+
+    if (caseSensitive) { // or equals operator, if true it is added
+        flag |= QTextDocument::FindCaseSensitively;
+    }
+    if (matchWhole) {
+        flag |= QTextDocument::FindWholeWords;
+    }
+
+    while (!highlightCursor.isNull() && !highlightCursor.atEnd()){
+        highlightCursor = document->find(text, highlightCursor, flag);
+
+        if (!highlightCursor.isNull()){
             // highlightCursor.movePosition(QTextCursor::WordRight, QTextCursor::KeepAnchor);
             highlightCursor.mergeCharFormat(colorFormat);
-            foundTextMatchCount++;  // Increment count for each match
+
+            foundOccurrences.append(highlightCursor);
+            foundTextMatchCount++;
         }
     }
 
@@ -415,19 +383,150 @@ void MainWindow::searchForText(const QString &text){
     statusBar()->showMessage(QString("Occurrences: %1").arg(foundTextMatchCount));
 }
 
-void MainWindow::removeHighlights() {
+void MainWindow::removeHighlights(){
     QTextDocument *document = ui->plainTextEdit->document();
     QTextCursor cursor(document);
-
     cursor.beginEditBlock();
 
     QTextCharFormat plainFormat;
     plainFormat.setBackground(Qt::transparent); // Set background to transparent to remove highlight
-
     cursor.select(QTextCursor::Document);
     cursor.mergeCharFormat(plainFormat);
 
     cursor.endEditBlock();
+    statusBar()->clearMessage();
 }
 
+void MainWindow::saveFile(){
+    if (currentFile.isEmpty()) {
+
+        on_actionSave_As_triggered();  // no file is open, instead calls save as
+        return;
+    }
+
+    QFile file(currentFile);
+
+    if (!file.open(QFile::WriteOnly | QFile::Text)) {
+        QMessageBox::warning(this, "Warning", "Unable to save file: " + file.errorString());
+        return;
+    }
+
+    QTextStream out(&file);
+    QString currentText = ui->plainTextEdit->toPlainText();
+    out << currentText;  // overwrites file content with the updated text.
+
+    file.close();
+
+    fileContentAfterSave = currentText;
+}
+
+void MainWindow::replaceText(){
+    QString replaceText = replaceLineEdit->text();
+    if (replaceText.isEmpty() || foundOccurrences.isEmpty()) {
+        return;  // If the replacement text is empty or no occurrences found, do nothing.
+    }
+
+    QTextCursor cursor = ui->plainTextEdit->textCursor();
+    cursor.beginEditBlock();  // Start a single undo block for the whole replacement operation.
+
+    for (QTextCursor &occurrence : foundOccurrences) { // loops through the vector storing all instances of the items to removed
+        occurrence.beginEditBlock();
+        occurrence.insertText(replaceText);
+        occurrence.endEditBlock();
+    }
+
+    cursor.endEditBlock();  // End the undo block.
+
+    statusBar()->showMessage(QString("Replaced %1 occurrences").arg(foundOccurrences.size()));
+    foundOccurrences.clear();  // Clear occurrences after replacement
+}
+
+void MainWindow::createSearchAndReplaceWidgets(){
+    // Structure
+    // BLANK PARENT WIDGET
+    //  - Horizontal Layout
+    //      - Vertical Layout
+    //          - Seacrch text line edit
+    //          - Replace text line edit
+    //          - Replace Text Button
+    //      - Vertical Layout
+    //          - Close menu button
+    //          - Is casesensitive checkmark
+    //          - Is match whole word checkmark
+    searchAndReplaceContainer = new QWidget(ui->plainTextEdit);
+
+    fullLayoutParent = new QHBoxLayout(searchAndReplaceContainer);
+    fullLayoutParent->setAlignment(Qt::AlignHCenter);
+
+
+    searchAndReplaceParent = new QVBoxLayout();
+    checkBoxesParent = new QVBoxLayout();
+    checkBoxesParent->setAlignment(Qt::AlignTop | Qt::AlignHCenter);
+
+
+    searchLineEdit = new QLineEdit();
+    replaceLineEdit = new QLineEdit();
+    replaceTextButton = new QPushButton("Replace Text");
+    connect(replaceTextButton, &QPushButton::clicked, this, &MainWindow::replaceText);
+
+    isCaseSensitive = new QCheckBox();
+    isCaseSensitive->setToolTip("Case Sensitive");
+    connect(isCaseSensitive, &QCheckBox::clicked, this, [this](){
+        searchForText(searchLineEdit->text());
+    });
+
+    isMatchWholeWord = new QCheckBox();
+    isMatchWholeWord->setToolTip("Match Whole Word");
+    connect(isMatchWholeWord, &QCheckBox::clicked, this, [this](){
+        searchForText(searchLineEdit->text());
+    });
+
+    qApp->setStyleSheet(" QCheckBox:hover{background-color: light-grey;}");
+
+    QIcon closeIcon = qApp->style()->standardIcon(QStyle::SP_TitleBarCloseButton);
+    hidePopUpButton = new QPushButton();
+    hidePopUpButton->setIcon(closeIcon);
+
+    // hidePopUpButton.hove
+    hidePopUpButton->setStyleSheet(" QPushButton:hover:!pressed{background-color: red;}");
+    connect(hidePopUpButton, &QPushButton::pressed, this, [this](){
+        searchAndReplaceContainer->hide();   // lambda to hide the search and replace item
+        this->ui->plainTextEdit->setFocus(); // changes the focused widget to the text box
+    });
+
+
+    searchAndReplaceParent->addWidget(searchLineEdit);
+    searchAndReplaceParent->addWidget(replaceLineEdit);
+    searchAndReplaceParent->addWidget(replaceTextButton);
+
+    checkBoxesParent->addWidget(hidePopUpButton);
+    checkBoxesParent->addWidget(isCaseSensitive);
+    checkBoxesParent->addWidget(isMatchWholeWord);
+
+
+    fullLayoutParent->addLayout(searchAndReplaceParent);
+    fullLayoutParent->addLayout(checkBoxesParent);
+
+    searchAndReplaceContainer->setLayout(fullLayoutParent);
+
+
+    searchLineEdit->setPlaceholderText("Search Text");
+    searchLineEdit->setFixedSize(120, 30);
+    replaceLineEdit->setPlaceholderText("Replace With");
+    replaceLineEdit->setFixedSize(120, 30);
+    replaceTextButton->setFixedSize(90, 30);
+
+
+}
+
+
+void MainWindow::on_actionFind_Replace_triggered()
+{
+    if(this->ui->plainTextEdit->hasFocus()){
+        searchAndReplaceContainer->show();
+        adjustSearchLineEditPosition(); // places it at correct location
+        searchLineEdit->setFocus(); // makes the line edit for the text to search be the focus
+    }
+
+}
 

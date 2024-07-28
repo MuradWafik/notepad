@@ -7,7 +7,8 @@
 #include <QFileDialog>
 #include <QTextStream>
 #include <QMessageBox>
-#include <QObject>
+// #include <QObject>
+#include <QVBoxLayout>
 #include <QScrollBar>
 // #include <QPrinter>
 // #include <QPrintDialog>
@@ -17,6 +18,8 @@
 #include <QProcess>
 #include <QTreeView>
 #include <QFileSystemModel>
+#include <QCheckBox>
+#include <QVector>
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -74,8 +77,13 @@ private slots:
 
     void searchForText(const QString &text);
     void removeHighlights();
+    void saveFile();
+    void replaceText();
+    void createSearchAndReplaceWidgets();
 
 
+
+    void on_actionFind_Replace_triggered();
 
 private:
     Ui::MainWindow *ui;
@@ -86,14 +94,24 @@ private:
     QString runPythonCommand;
     QString fileContentAfterSave;
 
-
     QFileSystemModel *fileModel; // the file explorer  on the left for treeview
 
-    QString outputContents; // for the output tab, it compares the diffrence for what the user input is
-
     QLineEdit* searchLineEdit;
+    QLineEdit* replaceLineEdit;
+    QPushButton* replaceTextButton;
+    QVBoxLayout* searchAndReplaceParent;
+    QWidget* searchAndReplaceContainer;
+
+    QCheckBox* isCaseSensitive;
+    QCheckBox* isMatchWholeWord;
+    QVBoxLayout* checkBoxesParent;
+
+    QHBoxLayout* fullLayoutParent;
+    QPushButton* hidePopUpButton;
+
 
     int foundTextMatchCount;
+    QVector<QTextCursor> foundOccurrences;
 
 };
 #endif // MAINWINDOW_H
