@@ -86,9 +86,15 @@ private slots:
 
 
     void on_actionFind_Replace_triggered();
-    void convertTabsToSpaces();
+
 
     void on_actionOpen_Folder_triggered();
+
+    void on_actionUndo_triggered();
+    void updateWindowTitle();
+protected:
+    // void keyPressEvent(QKeyEvent *event) override;  // Declaration of keyPressEvent
+    bool eventFilter(QObject *obj, QEvent *event) override;
 
 private:
     Ui::MainWindow *ui;
@@ -117,7 +123,9 @@ private:
 
     int foundTextMatchCount;
     QVector<QTextCursor> foundOccurrences;
-    bool ignoreTextChanged;
+
+
+    bool textIsSameAfterSave;
 
 };
 #endif // MAINWINDOW_H

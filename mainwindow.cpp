@@ -21,14 +21,18 @@ MainWindow::MainWindow(QWidget *parent)
     connect(lineNumberScrollBar, &QScrollBar::valueChanged, this, &MainWindow::synchronizeScrollbars);
     // connects the scroll bars of the text box the user types in with the line number text
 
+
     setUIChanges();
+
 
     connect(searchLineEdit, &QLineEdit::textChanged, this, &MainWindow::searchForText);
 
 
-    ignoreTextChanged = false; //flag to stop the text edited within, to activate the signal and get stuck in a recursive loop
-    // convertTabsToSpaces();
-    connect(this->ui->plainTextEdit, &QPlainTextEdit::textChanged, this, &MainWindow::convertTabsToSpaces);
+    // ignoreTextChanged = false; //flag to stop the text edited within, to activate the signal and get stuck in a recursive loop
+
+    connect(this->ui->plainTextEdit, &QPlainTextEdit::textChanged, this, &MainWindow::updateWindowTitle);
+
+    ui->plainTextEdit->installEventFilter(this);
 
 }
 
@@ -85,7 +89,7 @@ void MainWindow::on_actionSave_As_triggered()
 
     currentFile = fileName;
     this->ui->actionSave->setEnabled(true); // can save now since a file is selected
-    setWindowTitle(fileName);
+    // setWindowTitle(fileName);
 
     QTextStream out(&file);
     QString currentText = ui->plainTextEdit->toPlainText();
@@ -94,9 +98,8 @@ void MainWindow::on_actionSave_As_triggered()
 
     fileContentAfterSave = currentText;  // updates saved content tracker.
 
+    updateWindowTitle();
 }
-
-
 
 void MainWindow::on_actionSave_triggered()
 {
@@ -171,8 +174,6 @@ void MainWindow::initTerminalBox(){
     connect(process, &QProcess::readyReadStandardOutput, this, &MainWindow::on_StdoutAvailable);
     connect(process, &QProcess::readyReadStandardError, this, &MainWindow::on_StderrAvailable); // Connect the error output signal
 
-
-
 }
 
 
@@ -232,8 +233,8 @@ void MainWindow::setUIChanges(){
     int spaceWidth = metrics.horizontalAdvance(' ');
 
     // Set the tab stop distance to 4 spaces
-    ui->plainTextEdit->setTabStopDistance(4 * spaceWidth);
-        // Qt::QFontMetricsF(textedit.font()).horizontalAdvance(' ') * 4)
+    // ui->plainTextEdit->setTabStopDistance(4 * spaceWidth);
+
 }
 
 void MainWindow::on_pushButton_clicked()
@@ -286,11 +287,6 @@ void MainWindow::getAllFilesInDirectory(){
 }
 
 void MainWindow::getAllFilesInDirectory(QString directory){
-    // QDir directory(currentFile);
-
-    // QStringList files = directory.entryList(QStringList() << "*.py" << "*.txt",QDir::Files);
-
-
     fileModel = new QFileSystemModel(); // the file explorer  on the left for treeview
     // fileModel->setFilter(QDir::Hidden);
     QStringList filePaths(Qt::CaseInsensitive);
@@ -302,7 +298,6 @@ void MainWindow::getAllFilesInDirectory(QString directory){
     fileModel->setNameFilterDisables(false); // makes the files that arent within filter hidden instead of shown as disabled
     // fileModel->setRootPath(directory.path());
     fileModel->setRootPath(currentFile);
-
 
     this->ui->fileListTree->setModel(fileModel);
 
@@ -323,13 +318,14 @@ void MainWindow::on_fileListTree_doubleClicked(const QModelIndex &index)
 
         if(saveFileQuestion == QMessageBox::Yes){
             saveFile();
+            // saving file crashes for some reason unless it also opens it again afterwards
         }
         else{
-            // does nothing for now ,, just moves on and opens the other file
+            openFile(fileToOpenPath);
         }
     }
 
-    openFile(fileToOpenPath);
+
 }
 
 void MainWindow::openFile(const QString filePath){
@@ -341,7 +337,9 @@ void MainWindow::openFile(const QString filePath){
 
     this->ui->actionSave->setEnabled(true); // if they successfully opened a file, the save button can be used for it
     currentFile = filePath;
-    setWindowTitle(filePath);
+
+    // setWindowTitle(filePath);
+
     QTextStream in(&file);
 
     QString text = in.readAll();
@@ -355,7 +353,10 @@ void MainWindow::openFile(const QString filePath){
     file.close();
 
     updateTerminalAndOutput();
+    updateWindowTitle();
+    // convertTabsToSpaces(); // otherwise it says file is not saved on opening
     // getAllFilesInDirectory();
+
 
 }
 
@@ -364,7 +365,7 @@ void MainWindow::updateTerminalAndOutput(){
         process->setWorkingDirectory(QFileInfo(currentFile).absolutePath());
     }
     else if(process->state() == QProcess::Starting){
-        process->start("cmd.exe");
+        // process->start("cmd.exe");
     }
     else if(process->state() == QProcess::NotRunning){
         // if the process isnt running, initialize it
@@ -388,8 +389,8 @@ void MainWindow::adjustSearchLineEditPosition()
 
 void MainWindow::resizeEvent(QResizeEvent *event)
 {
-    QMainWindow::resizeEvent(event);
     adjustSearchLineEditPosition();
+    QMainWindow::resizeEvent(event);   
 }
 
 
@@ -441,6 +442,7 @@ void MainWindow::searchForText(const QString &text){
 
     cursor.endEditBlock();
     statusBar()->showMessage(QString("Occurrences: %1").arg(foundTextMatchCount));
+
 }
 
 void MainWindow::removeHighlights(){
@@ -458,26 +460,31 @@ void MainWindow::removeHighlights(){
 }
 
 void MainWindow::saveFile(){
-    if (currentFile.isEmpty()) {
-
-        on_actionSave_As_triggered();  // no file is open, instead calls save as
+    if(currentFile.isEmpty()) {
+        qDebug() << "Current file is empty. Triggering Save As dialog.";
+        // on_actionSave_As_triggered();  // If no file is open, trigger Save As
         return;
     }
 
     QFile file(currentFile);
-
-    if (!file.open(QFile::WriteOnly | QFile::Text)) {
-        QMessageBox::warning(this, "Warning", "Unable to save file: " + file.errorString());
+    if(!file.open(QIODevice::WriteOnly | QIODevice::Text)){
+        QMessageBox::warning(this, "Warning", "cant  " + file.errorString());
         return;
     }
 
+    // qDebug() << file.fileName() << " that was name, current is " << currentFile;
     QTextStream out(&file);
-    QString currentText = ui->plainTextEdit->toPlainText();
-    out << currentText;  // overwrites file content with the updated text.
+    // auto text = this->ui->plainTextEdit->toPlainText().toUtf8();
+    QString text = this->ui->plainTextEdit->toPlainText();
+    out << text;
 
+    // qDebug() << file.fileName();
     file.close();
+    fileContentAfterSave = text;  // updates saved content tracker.
 
-    fileContentAfterSave = currentText;
+    updateWindowTitle();
+    // qDebug() << this->ui->plainTextEdit->cursor();
+    openFile(currentFile);
 }
 
 void MainWindow::replaceText(){
@@ -543,8 +550,10 @@ void MainWindow::createSearchAndReplaceWidgets(){
 
     connect(isMatchWholeWord, &QCheckBox::clicked, this, [this](){
         searchForText(searchLineEdit->text());
+        qDebug() << "called on match";
     });
     connect(isCaseSensitive, &QCheckBox::clicked, this, [this](){
+        qDebug() << "called on case ";
         searchForText(searchLineEdit->text());
     }); // re does the search if either button is clicked
 
@@ -595,33 +604,6 @@ void MainWindow::on_actionFind_Replace_triggered()
     }
 }
 
-void MainWindow::convertTabsToSpaces(){
-    if (ignoreTextChanged) {
-        return;
-    }
-
-    ignoreTextChanged = true;
-
-    QTextCursor cursor = ui->plainTextEdit->textCursor();
-    QString text = ui->plainTextEdit->toPlainText();
-
-    // replaces the tabs with 4 spaces
-    text.replace("\t", "    ");
-
-    // temporarily disconnect textChanged signal to avoid recursion
-    disconnect(ui->plainTextEdit, &QPlainTextEdit::textChanged, this, &MainWindow::convertTabsToSpaces);
-    ui->plainTextEdit->setPlainText(text);
-    ui->plainTextEdit->setTextCursor(cursor);
-    connect(ui->plainTextEdit, &QPlainTextEdit::textChanged, this, &MainWindow::convertTabsToSpaces);
-
-    // re-trigger searchForText to apply highlights
-    searchForText(searchLineEdit->text());
-
-    ignoreTextChanged = false;
-
-}
-
-
 void MainWindow::on_actionOpen_Folder_triggered()
 {
     QString dir = QFileDialog::getExistingDirectory(this, tr("Open Directory"),
@@ -629,15 +611,48 @@ void MainWindow::on_actionOpen_Folder_triggered()
                                                     QFileDialog::ShowDirsOnly
                                                         | QFileDialog::DontResolveSymlinks);
     if(dir.isEmpty()){
-        QMessageBox::warning(this, "Warning", "Unable To Open Folder");
+        QMessageBox::warning(this, "Warning", tr("Unable To Open Folder"));
         return;
     }
-    qDebug() << dir;
 
     this->ui->stackedWidget->setCurrentWidget(this->ui->page_2); // sets the page to the text editor page
     this->ui->dockWidget_4->showNormal();
     updateTerminalAndOutput();
 
     getAllFilesInDirectory(dir);
+    setWindowTitle(dir);
 }
 
+
+void MainWindow::on_actionUndo_triggered()
+{
+    // undo
+}
+
+void MainWindow::updateWindowTitle(){
+    qDebug() << "called on update title";
+    textIsSameAfterSave = fileContentAfterSave == this->ui->plainTextEdit->toPlainText();
+    if(!textIsSameAfterSave){
+        setWindowTitle(currentFile + " (Changes Not Saved)");
+    }
+    else if(textIsSameAfterSave && windowTitle() != currentFile){
+        setWindowTitle(currentFile);
+    }
+}
+
+
+bool MainWindow::eventFilter(QObject *obj, QEvent *event)
+{
+    if (obj == ui->plainTextEdit) {
+        if (event->type() == QEvent::KeyPress) {
+            QKeyEvent *keyEvent = static_cast<QKeyEvent *>(event);
+            if (keyEvent->key() == Qt::Key_Tab) {
+                qDebug()<<"tab";
+                QTextCursor cursor = ui->plainTextEdit->textCursor();
+                cursor.insertText("   "); // Insert four spaces
+                return true; // Event handled, don't pass it to the base class
+            }
+        }
+    }
+    return QMainWindow::eventFilter(obj, event);
+}
