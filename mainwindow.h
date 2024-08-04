@@ -19,6 +19,7 @@
 #include <QFileSystemModel>
 #include <QCheckBox>
 #include <QVector>
+#include <QTimer>
 // #include <QStringList>
 
 QT_BEGIN_NAMESPACE
@@ -92,6 +93,9 @@ private slots:
 
     void on_actionUndo_triggered();
     void updateWindowTitle();
+
+    QString getShellCommand();
+
 protected:
     // void keyPressEvent(QKeyEvent *event) override;  // Declaration of keyPressEvent
     bool eventFilter(QObject *obj, QEvent *event) override;
@@ -101,7 +105,7 @@ private:
     QString currentFile = "";
     int previousNumberOfLines = 0;  // to see if line numbers (block count) are increased or decreased on change
     QProcess *process;
-    // QProcess *outputProcess;
+
     QString runPythonCommand;
     QString fileContentAfterSave;
 
@@ -123,9 +127,12 @@ private:
 
     int foundTextMatchCount;
     QVector<QTextCursor> foundOccurrences;
+    QString startTerminalCommand;
+
 
 
     bool textIsSameAfterSave;
+
 
 };
 #endif // MAINWINDOW_H
