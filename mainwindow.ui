@@ -14,7 +14,7 @@
    <string>MainWindow</string>
   </property>
   <property name="dockOptions">
-   <set>QMainWindow::AllowNestedDocks|QMainWindow::AllowTabbedDocks|QMainWindow::AnimatedDocks|QMainWindow::VerticalTabs</set>
+   <set>QMainWindow::DockOption::AllowNestedDocks|QMainWindow::DockOption::AllowTabbedDocks|QMainWindow::DockOption::AnimatedDocks|QMainWindow::DockOption::VerticalTabs</set>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QHBoxLayout" name="horizontalLayout_2">
@@ -37,7 +37,7 @@
            <string>Create or Open A File to Begin</string>
           </property>
           <property name="alignment">
-           <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+           <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignTop</set>
           </property>
          </widget>
         </item>
@@ -67,7 +67,7 @@
             <property name="spacing">
              <number>0</number>
             </property>
-            <item alignment="Qt::AlignRight">
+            <item alignment="Qt::AlignmentFlag::AlignRight">
              <widget class="QPlainTextEdit" name="lineNumPlainTextEdit">
               <property name="sizePolicy">
                <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
@@ -93,20 +93,23 @@
                 <height>0</height>
                </size>
               </property>
-              <property name="layoutDirection">
-               <enum>Qt::LeftToRight</enum>
+              <property name="focusPolicy">
+               <enum>Qt::FocusPolicy::NoFocus</enum>
+              </property>
+              <property name="contextMenuPolicy">
+               <enum>Qt::ContextMenuPolicy::NoContextMenu</enum>
               </property>
               <property name="inputMethodHints">
-               <set>Qt::ImhNone</set>
+               <set>Qt::InputMethodHint::ImhNone</set>
               </property>
               <property name="verticalScrollBarPolicy">
-               <enum>Qt::ScrollBarAlwaysOff</enum>
+               <enum>Qt::ScrollBarPolicy::ScrollBarAlwaysOff</enum>
               </property>
               <property name="horizontalScrollBarPolicy">
-               <enum>Qt::ScrollBarAlwaysOff</enum>
+               <enum>Qt::ScrollBarPolicy::ScrollBarAlwaysOff</enum>
               </property>
               <property name="sizeAdjustPolicy">
-               <enum>QAbstractScrollArea::AdjustToContents</enum>
+               <enum>QAbstractScrollArea::SizeAdjustPolicy::AdjustToContents</enum>
               </property>
               <property name="readOnly">
                <bool>true</bool>
@@ -115,7 +118,7 @@
                <string/>
               </property>
               <property name="textInteractionFlags">
-               <set>Qt::NoTextInteraction</set>
+               <set>Qt::TextInteractionFlag::NoTextInteraction</set>
               </property>
              </widget>
             </item>
@@ -128,10 +131,10 @@
                </size>
               </property>
               <property name="sizeAdjustPolicy">
-               <enum>QAbstractScrollArea::AdjustToContents</enum>
+               <enum>QAbstractScrollArea::SizeAdjustPolicy::AdjustToContents</enum>
               </property>
               <property name="lineWrapMode">
-               <enum>QPlainTextEdit::NoWrap</enum>
+               <enum>QPlainTextEdit::LineWrapMode::NoWrap</enum>
               </property>
               <property name="plainText">
                <string/>
@@ -194,8 +197,16 @@
     <addaction name="actionShow_Terminal"/>
     <addaction name="actionHide_Terminal"/>
    </widget>
+   <widget class="QMenu" name="menuView">
+    <property name="title">
+     <string>View</string>
+    </property>
+    <addaction name="actionShow_File_P"/>
+    <addaction name="actionClear_Terminal"/>
+   </widget>
    <addaction name="menuFile"/>
    <addaction name="menuEdit"/>
+   <addaction name="menuView"/>
    <addaction name="menuRun"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
@@ -207,10 +218,10 @@
     </size>
    </property>
    <property name="features">
-    <set>QDockWidget::DockWidgetClosable</set>
+    <set>QDockWidget::DockWidgetFeature::DockWidgetClosable</set>
    </property>
    <property name="allowedAreas">
-    <set>Qt::BottomDockWidgetArea|Qt::RightDockWidgetArea</set>
+    <set>Qt::DockWidgetArea::BottomDockWidgetArea|Qt::DockWidgetArea::RightDockWidgetArea</set>
    </property>
    <attribute name="dockWidgetArea">
     <number>8</number>
@@ -236,7 +247,7 @@
          <string>Terminal</string>
         </attribute>
         <layout class="QVBoxLayout" name="verticalLayout_5">
-         <item alignment="Qt::AlignRight">
+         <item alignment="Qt::AlignmentFlag::AlignRight">
           <widget class="QPushButton" name="pushButton">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -316,10 +327,10 @@
     <bool>false</bool>
    </property>
    <property name="features">
-    <set>QDockWidget::DockWidgetClosable|QDockWidget::DockWidgetMovable</set>
+    <set>QDockWidget::DockWidgetFeature::DockWidgetClosable|QDockWidget::DockWidgetFeature::DockWidgetMovable</set>
    </property>
    <property name="allowedAreas">
-    <set>Qt::LeftDockWidgetArea|Qt::RightDockWidgetArea</set>
+    <set>Qt::DockWidgetArea::LeftDockWidgetArea|Qt::DockWidgetArea::RightDockWidgetArea</set>
    </property>
    <attribute name="dockWidgetArea">
     <number>1</number>
@@ -380,10 +391,16 @@
    <property name="text">
     <string>Redo</string>
    </property>
+   <property name="shortcut">
+    <string>Ctrl+Y</string>
+   </property>
   </action>
   <action name="actionSelect_All">
    <property name="text">
     <string>Select All</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+A</string>
    </property>
   </action>
   <action name="actionNew">
@@ -411,7 +428,7 @@
   </action>
   <action name="actionFind_Replace">
    <property name="text">
-    <string>Find &amp; Replace</string>
+    <string>Find and Replace</string>
    </property>
    <property name="toolTip">
     <string>Find and Replace</string>
@@ -426,6 +443,16 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+Shift+O</string>
+   </property>
+  </action>
+  <action name="actionShow_File_P">
+   <property name="text">
+    <string>Show File Tree</string>
+   </property>
+  </action>
+  <action name="actionClear_Terminal">
+   <property name="text">
+    <string>Clear Terminal</string>
    </property>
   </action>
   <zorder>dockWidget_2</zorder>

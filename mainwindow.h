@@ -9,8 +9,6 @@
 #include <QMessageBox>
 #include <QVBoxLayout>
 #include <QScrollBar>
-// #include <QPrinter>
-// #include <QPrintDialog>
 #include <QDebug>
 #include <QTextBlock>
 #include <QDebug>
@@ -19,8 +17,6 @@
 #include <QFileSystemModel>
 #include <QCheckBox>
 #include <QVector>
-#include <QTimer>
-// #include <QStringList>
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -96,6 +92,14 @@ private slots:
 
     QString getShellCommand();
 
+    void on_actionShow_File_P_triggered();
+
+    void on_actionClear_Terminal_triggered();
+
+    void on_actionRedo_triggered();
+
+    void on_actionSelect_All_triggered();
+
 protected:
     // void keyPressEvent(QKeyEvent *event) override;  // Declaration of keyPressEvent
     bool eventFilter(QObject *obj, QEvent *event) override;
@@ -129,10 +133,11 @@ private:
     QVector<QTextCursor> foundOccurrences;
     QString startTerminalCommand;
 
-
-
     bool textIsSameAfterSave;
 
-
+    // QWidget* statusBarWidget;
+    // QHBoxLayout* statusBarLayout;
+    QLabel* lineAndColStatusLabel;
+    QLabel* searchAndReplaceStatusLabel;
 };
 #endif // MAINWINDOW_H

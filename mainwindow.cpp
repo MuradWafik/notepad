@@ -15,19 +15,13 @@ MainWindow::MainWindow(QWidget *parent)
 
     createSearchAndReplaceWidgets();
 
-    // QScrollBar* plainTextScrollBar =
-    // QScrollBar* lineNumberScrollBar =
-
     connect(ui->lineNumPlainTextEdit->verticalScrollBar(), &QScrollBar::valueChanged, this, &MainWindow::synchronizeScrollbars);
     connect(ui->plainTextEdit->verticalScrollBar(), &QScrollBar::valueChanged, this, &MainWindow::synchronizeScrollbars);
     // connects the scroll bars of the text box the user types in with the line number text
 
-
     setUIChanges();
 
-
     connect(searchLineEdit, &QLineEdit::textChanged, this, &MainWindow::searchForText);
-
 
     // ignoreTextChanged = false; //flag to stop the text edited within, to activate the signal and get stuck in a recursive loop
 
@@ -35,8 +29,6 @@ MainWindow::MainWindow(QWidget *parent)
 
     ui->plainTextEdit->installEventFilter(this);
     startTerminalCommand = getShellCommand(); // differentiates the terminial start based on the operating system
-
-
 }
 
 MainWindow::~MainWindow()
@@ -47,8 +39,6 @@ MainWindow::~MainWindow()
     }
 
     delete process;
-
-
     delete ui;
 }
 
@@ -125,7 +115,14 @@ void MainWindow::on_actionSave_triggered()
 
 void MainWindow::on_plainTextEdit_cursorPositionChanged()
 { // possibly later a tracker for current line num and column
-    return;
+
+    auto cursor = this->ui->plainTextEdit->textCursor();
+
+    int col = cursor.columnNumber() + 1;
+    int line = cursor.blockNumber() + 1;
+    QString text = "LN: " + QString::number(line) + ", COL: " + QString::number(col);
+    // statusBar()->showMessage(text);
+    lineAndColStatusLabel->setText(text);
 }
 
 void MainWindow::on_plainTextEdit_blockCountChanged(int newBlockCount)
@@ -249,11 +246,11 @@ void MainWindow::setUIChanges(){
 void MainWindow::on_pushButton_clicked()
 {
     if(process->isOpen()){
+        on_actionShow_Terminal_triggered();
         runPythonCommand = QString("python -u \"%1\"").arg(currentFile);
         QByteArray runFileCommand(runPythonCommand.toUtf8() + "\n") ;
-        char *userText = runFileCommand.data();
 
-        process->write(userText); // inputs the user command into the terminal
+        process->write(runFileCommand.data()); // inputs the user command into the terminal
         process->waitForBytesWritten();
     }
 }
@@ -261,7 +258,7 @@ void MainWindow::on_pushButton_clicked()
 
 void MainWindow::on_actionShow_Terminal_triggered()
 {
-    this->ui->dockWidget_2->showNormal(); // if they press new terminal, it shows the widget for them both
+    this->ui->dockWidget_2->showNormal(); // if they press new terminal, it shows the widget it
 }
 
 
@@ -271,7 +268,6 @@ void MainWindow::on_actionHide_Terminal_triggered()
 }
 
 void MainWindow::getAllFilesInDirectory(){
-    // QDir directory(currentFile);
     QDir directory = QFileInfo(currentFile).dir();
 
     QStringList filePaths(Qt::CaseInsensitive);
@@ -421,7 +417,8 @@ void MainWindow::searchForText(const QString &text){
     }
 
     cursor.endEditBlock();
-    statusBar()->showMessage(QString("Occurrences: %1").arg(foundTextMatchCount));
+    // statusBar()->showMessage(QString("Occurrences: %1").arg(foundTextMatchCount));
+    searchAndReplaceStatusLabel->setText(QString("Occurrences: %1").arg(foundTextMatchCount));
 
 }
 
@@ -436,7 +433,8 @@ void MainWindow::removeHighlights(){
     cursor.mergeCharFormat(plainFormat);
 
     cursor.endEditBlock();
-    statusBar()->clearMessage();
+    // statusBar()->clearMessage();
+    searchAndReplaceStatusLabel->clear();
 }
 
 void MainWindow::saveFile(){
@@ -486,7 +484,7 @@ void MainWindow::replaceText(){
 
     cursor.endEditBlock();  // End the undo block.
 
-    statusBar()->showMessage(QString("Replaced %1 occurrences").arg(foundOccurrences.size()), 5); // clears message on statusbar after 5 seconds
+    searchAndReplaceStatusLabel->setText(QString("Replaced %1 occurrences").arg(foundOccurrences.size()));
     foundOccurrences.clear();  // Clear occurrences after replacement
 }
 
@@ -575,16 +573,30 @@ void MainWindow::createSearchAndReplaceWidgets(){
     replaceTextButton->setFixedSize(90, 30);
 
 
+    // THE BOTTOM STATIS BAR PART
+    QWidget* statusBarWidget = new QWidget;
+    QHBoxLayout* statusBarLayout = new QHBoxLayout;
+    statusBarWidget->setLayout(statusBarLayout);
+    lineAndColStatusLabel = new QLabel(this);
+    searchAndReplaceStatusLabel = new QLabel(this);
+
+    statusBarLayout->addWidget(lineAndColStatusLabel);
+    statusBarLayout->addSpacerItem(new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum));
+    statusBarLayout->addWidget(searchAndReplaceStatusLabel);
+    ui->statusbar->addWidget(statusBarWidget, 1); // adds the widget and makes it stretch to fill entire status bar
 }
 
 
 void MainWindow::on_actionFind_Replace_triggered()
 {
-    if(this->ui->plainTextEdit->hasFocus()){
+    if(currentFile.isEmpty()){
+        return;
+    }
+    // if(this->ui->plainTextEdit->hasFocus()){
         searchAndReplaceContainer->show();
         adjustSearchLineEditPosition(); // places it at correct location
         searchLineEdit->setFocus(); // makes the line edit for the text to search be the focus
-    }
+    // }
 }
 
 void MainWindow::on_actionOpen_Folder_triggered()
@@ -601,8 +613,7 @@ void MainWindow::on_actionOpen_Folder_triggered()
 
     QString dir = QFileDialog::getExistingDirectory(this, "Open Directory",
                                                     "/home",
-                                                    QFileDialog::ShowDirsOnly
-                                                    | QFileDialog::DontResolveSymlinks);
+                                                    QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
     if(dir.isEmpty()){
         QMessageBox::warning(this, "Warning", tr("Unable To Open Folder"));
         return;
@@ -619,8 +630,16 @@ void MainWindow::on_actionOpen_Folder_triggered()
 
 void MainWindow::on_actionUndo_triggered()
 {
-    // undo
+    if(currentFile.isEmpty()) return;
+    QWidget* focusedWidget = QApplication::focusWidget();
+    if (auto plainTextEdit = qobject_cast<QPlainTextEdit*>(focusedWidget)) {
+        plainTextEdit->undo();
+    }
+    else if (auto lineEdit = qobject_cast<QLineEdit*>(focusedWidget)) {
+        lineEdit->undo();
+    } // tries to cast the focused widget into one of these, if possible calls on the built in undo function
 }
+
 
 void MainWindow::updateWindowTitle(){
     // qDebug() << "called on update title";
@@ -658,3 +677,42 @@ QString MainWindow::getShellCommand() {
     return "/bin/sh";
 #endif
 }
+
+void MainWindow::on_actionShow_File_P_triggered()
+{
+    this->ui->dockWidget_4->showNormal();
+}
+
+
+void MainWindow::on_actionClear_Terminal_triggered()
+{
+    this->ui->terminalBox->clear();
+}
+
+
+void MainWindow::on_actionRedo_triggered()
+{
+    QWidget* focusedWidget = QApplication::focusWidget();
+
+    if (auto plainTextEdit = qobject_cast<QPlainTextEdit*>(focusedWidget)) {
+        plainTextEdit->redo();
+    }
+    else if (auto lineEdit = qobject_cast<QLineEdit*>(focusedWidget)) {
+        lineEdit->redo();
+
+    } //  just like undo
+    //tries to cast the focused widget into one of these, if possible calls on the built in redo function
+}
+
+
+void MainWindow::on_actionSelect_All_triggered()
+{
+    QWidget* focusedWidget = QApplication::focusWidget();
+
+    if (auto plainTextEdit = qobject_cast<QPlainTextEdit*>(focusedWidget)) {
+        plainTextEdit->selectAll();
+    } else if (auto lineEdit = qobject_cast<QLineEdit*>(focusedWidget)) {
+        lineEdit->selectAll();
+    } // tries to cast the focused widget into one of these, if possible calls on the built in select ll function
+}
+
