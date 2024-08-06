@@ -32,7 +32,7 @@ MainWindow::MainWindow(QWidget *parent)
 
 
     searchReplaceWidget = new searchAndReplaceObject(this->ui->plainTextEdit, this->ui->plainTextEdit);
-    // mainLayout->addWidget(searchReplaceWidget);
+    // references the plaintextedit as the parent and the editor used
 }
 
 MainWindow::~MainWindow()
@@ -393,7 +393,6 @@ void MainWindow::saveFile(){
         fileContentAfterSave = text;  // Update the saved content tracker.
 
         updateWindowTitle();
-        // getAllFilesInDirectory();
 
     } catch (const std::exception &e) {
         QMessageBox::warning(this, "Warning", e.what());

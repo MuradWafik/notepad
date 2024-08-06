@@ -1,87 +1,135 @@
 #include "searchandreplaceobject.h"
 
 searchAndReplaceObject::searchAndReplaceObject(QPlainTextEdit* editor, QWidget* parent)
-    : QWidget(parent)
+    : QDockWidget(parent)
     , editor(editor)
 {
     setupUI(); // makes the ui items and signal connections in constructor
     connectSignalsAndSlots();
     this->hide();
+
 }
 
 void searchAndReplaceObject::setupUI(){
-    // Structure
-    // BLANK PARENT WIDGET
-    //  - Horizontal Layout
-    //      - Vertical Layout
-    //          - Seacrch text line edit
-    //          - Replace text line edit
-    //          - Replace Text Button
-    //      - Vertical Layout
-    //          - Close menu button
-    //          - Is casesensitive checkmark
-    //          - Is match whole word checkmark
+    // FULL NEW STRUCTURE
+//  Blank EMPTY widget -- search and replace container
+    // QVbox  -- full layout parent
+    //     QHbox	-- line edits and iterate layout
+    //         QVBOX -- search and replace parent
+    //             Search -- searchtextlineedit
+    //             Replace -- replacetextlineedit
+
+    //         Empty Widget -- iterator blank widget
+    //             QVBOX --iterate words layout
+    //                 Iterator label box
+    //                 QHbox -- prevandnextbuttonslayout
+    //                      Prev button
+    //                      Next button
+
+    //     Empty Widget -- bottomempty widget
+    //         QHbox -- bottom layout
+    //             Replace Button
+    //             Another Qhbox aligned to right --checkboxesparent
+    //                 Match whole word button
+    //                 Case sensitive button
 
 
-    QHBoxLayout* fullLayoutParent = new QHBoxLayout(this);
-    fullLayoutParent->setAlignment(Qt::AlignHCenter);
+// Ceates the ui objects in the structure above
+    QFrame* searchAndReplaceContainer = new QFrame(this);
+    searchAndReplaceContainer->setFrameShape(QFrame::Box);
+    searchAndReplaceContainer->setAutoFillBackground(true);
+    // searchAndReplaceContainer.bac
+    this->setWidget(searchAndReplaceContainer);
 
 
-    QVBoxLayout* searchAndReplaceParent = new QVBoxLayout();
+    QVBoxLayout* fullLayoutParent = new QVBoxLayout(searchAndReplaceContainer);
+    // fullLayoutParent->setAlignment(Qt::AlignHCenter);
 
-    QVBoxLayout* checkBoxesParent = new QVBoxLayout();
-    checkBoxesParent->setAlignment(Qt::AlignTop | Qt::AlignHCenter);
+    QHBoxLayout* lineEditsAndIterateLayout = new QHBoxLayout;
+    QVBoxLayout* searchAndReplaceParent = new QVBoxLayout;
 
-    searchTextLineEdit = new QLineEdit();
-    replaceTextLineEdit = new QLineEdit();
-    replaceTextButton = new QPushButton("Replace Text");
+    searchTextLineEdit = new QLineEdit;
+    searchAndReplaceParent->addWidget(searchTextLineEdit);
+    replaceTextLineEdit = new QLineEdit;
+    searchAndReplaceParent->addWidget(replaceTextLineEdit);
 
 
-    isCaseSensitive = new QCheckBox();
+    QFrame* iteratorBlankWidget = new QFrame;
+    iteratorBlankWidget->setFrameShape(QFrame::Box);
+
+    QVBoxLayout* iterateWordsLayout = new QVBoxLayout(iteratorBlankWidget);
+
+    occurenceIteratorLabel = new QLabel("0 / 0");
+    occurenceIteratorLabel->setAlignment(Qt::AlignCenter | Qt::AlignHCenter);
+    occurenceIteratorLabel->setStyleSheet("QLabel{font-size: 20px;}");
+    iterateWordsLayout->addWidget(occurenceIteratorLabel);
+
+
+    QHBoxLayout* prevAndNextButtonsLayout = new QHBoxLayout;
+    prevMatchButton = new QPushButton;
+    connect(prevMatchButton, &QPushButton::clicked, this, &searchAndReplaceObject::goToPreviousSelection);
+    nextMatchButton = new QPushButton;
+    connect(nextMatchButton, &QPushButton::clicked, this, &searchAndReplaceObject::goToNextSelection);
+
+
+    nextMatchButton->setIcon(qApp->style()->standardIcon(QStyle::SP_ArrowForward));
+    // nextMatchButton.image
+    prevMatchButton->setIcon(qApp->style()->standardIcon(QStyle::SP_ArrowBack)); // means left unless the layout of language is right to left
+    // nextMatchButton->setStyleSheet("QPushButton:hover{ background-color: lightgray;}");
+    nextMatchButton->setStyleSheet(""); // This resets to default
+
+    prevMatchButton->setStyleSheet("QPushButton:hover{ background-color: lightgray;}");
+    prevAndNextButtonsLayout->addWidget(prevMatchButton);
+    prevAndNextButtonsLayout->addWidget(nextMatchButton);
+
+
+    QFrame* bottomEmptyWidget = new QFrame;
+    bottomEmptyWidget->setAutoFillBackground(true);
+    bottomEmptyWidget->setFrameShape(QFrame::Box);
+    QHBoxLayout* bottomLayout = new QHBoxLayout(bottomEmptyWidget);
+
+    replaceTextButton = new QPushButton("Replace All");
+
+
+    QHBoxLayout* checkBoxesParent = new QHBoxLayout;
+
+    isCaseSensitive = new QCheckBox;
+    checkBoxesParent->addWidget(isCaseSensitive);
+
+
+    // checkBoxesParent->setAlignment(Qt::AlignTop | Qt::AlignHCenter);
+    isMatchWholeWord = new QCheckBox;
+    checkBoxesParent->addWidget(isMatchWholeWord);
+
+    iterateWordsLayout->addLayout(prevAndNextButtonsLayout);
+
+    bottomLayout->addWidget(replaceTextButton);
+    bottomLayout->addLayout(checkBoxesParent);
+
+
+    lineEditsAndIterateLayout->addLayout(searchAndReplaceParent);
+    lineEditsAndIterateLayout->addWidget(iteratorBlankWidget);
+
+    fullLayoutParent->addLayout(lineEditsAndIterateLayout);
+    fullLayoutParent->addWidget(bottomEmptyWidget);
+
+
     isCaseSensitive->setToolTip("Case Sensitive");
     QIcon caseSensitveIcon = QIcon(":/imgs/gui-case-sensitive.svg");
     isCaseSensitive->setIcon(caseSensitveIcon);
 
 
-    isMatchWholeWord = new QCheckBox();
     isMatchWholeWord->setToolTip("Match Whole Word");
     QIcon matchWholeIcon = QIcon(":/imgs/whole-word.svg");
     isMatchWholeWord->setIcon(matchWholeIcon);
 
-    qApp->setStyleSheet(" QCheckBox:hover{background-color: light-grey;}");
-
-    QIcon closeIcon = qApp->style()->standardIcon(QStyle::SP_TitleBarCloseButton);
-    QPushButton* hidePopUpButton = new QPushButton();
-
-    hidePopUpButton->setIcon(closeIcon);
-    hidePopUpButton->setStyleSheet(" QPushButton:hover:!pressed{background-color: red;}");
-
-    connect(hidePopUpButton, &QPushButton::pressed, this, [this](){
-        removeHighlights(); // if any text was selected before hand, the highlight gets removed
-        this->hide();
-        editor->setFocus(); // changes the focused widget to the main text box
-    });
-
-
-    searchAndReplaceParent->addWidget(searchTextLineEdit);
-    searchAndReplaceParent->addWidget(replaceTextLineEdit);
-    searchAndReplaceParent->addWidget(replaceTextButton);
-
-    checkBoxesParent->addWidget(hidePopUpButton);
-    checkBoxesParent->addWidget(isCaseSensitive);
-    checkBoxesParent->addWidget(isMatchWholeWord);
-
-    fullLayoutParent->addLayout(searchAndReplaceParent);
-    fullLayoutParent->addLayout(checkBoxesParent);
-
-    this->setLayout(fullLayoutParent);
-
+    qApp->setStyleSheet(" QCheckBox:hover{background-color: light-gray;}");
 
     searchTextLineEdit->setPlaceholderText("Search Text");
-    searchTextLineEdit->setFixedSize(120, 30);
+    searchTextLineEdit->setFixedSize(160, 20);
     replaceTextLineEdit->setPlaceholderText("Replace With");
-    replaceTextLineEdit->setFixedSize(120, 30);
-    replaceTextButton->setFixedSize(90, 30);
+    replaceTextLineEdit->setFixedSize(160, 20);
+    replaceTextButton->setFixedSize(120, 20);
 
 
     searchAndReplaceParent->setSpacing(2);
@@ -107,7 +155,6 @@ void searchAndReplaceObject::connectSignalsAndSlots() {
 }
 
 void searchAndReplaceObject::onReplaceClicked() {
-    // qDebug() << editor->toPlainText();
     QString replaceText = replaceTextLineEdit->text();
     if (replaceText.isEmpty() || foundOccurrences.isEmpty()) {
         return;  // If the replacement text is empty or no occurrences found, do nothing.
@@ -123,8 +170,6 @@ void searchAndReplaceObject::onReplaceClicked() {
     }
 
     cursor.endEditBlock();  // End the undo block.
-
-    // searchAndReplaceStatusLabel->setText(QString("Replaced %1 occurrences").arg(foundOccurrences.size()));
     foundOccurrences.clear();  // Clear occurrences after replacement
 }
 
@@ -148,15 +193,12 @@ void searchAndReplaceObject::searchForText(const QString& text){
     QTextCharFormat colorFormat = plainFormat;
     colorFormat.setBackground(Qt::blue);
 
-    bool caseSensitive = isCaseSensitive->isChecked();
-    bool matchWhole = isMatchWholeWord->isChecked();
-
     QTextDocument::FindFlags flag;
 
     // or equals operator, if true it is added
-    if (caseSensitive) flag |= QTextDocument::FindCaseSensitively;
+    if (isCaseSensitive->isChecked()) flag |= QTextDocument::FindCaseSensitively;
 
-    if (matchWhole) flag |= QTextDocument::FindWholeWords;
+    if (isMatchWholeWord->isChecked()) flag |= QTextDocument::FindWholeWords;
 
     while (!highlightCursor.isNull() && !highlightCursor.atEnd()){
         highlightCursor = document->find(text, highlightCursor, flag);
@@ -168,10 +210,17 @@ void searchAndReplaceObject::searchForText(const QString& text){
             foundOccurrences.append(highlightCursor);
         }
     }
-
     cursor.endEditBlock();
-    // statusBar()->showMessage(QString("Occurrences: %1").arg(foundTextMatchCount));
-    // searchAndReplaceStatusLabel->setText(QString("Occurrences: %1").arg(foundOccurrences.size()));
+
+    if(foundOccurrences.size() == 0) return; // if an item is found moves the cursor to the last item
+
+    selectedOccurenceIndex = foundOccurrences.size();
+    QString labelText = QString::number(selectedOccurenceIndex) + " / " + QString::number(foundOccurrences.size());
+    occurenceIteratorLabel->setText(labelText);
+
+    auto textcursor = editor->textCursor();
+    textcursor.setPosition(foundOccurrences.at(selectedOccurenceIndex-1).position());
+    editor->setTextCursor(textcursor);
 };
 
 void searchAndReplaceObject::removeHighlights(){
@@ -185,11 +234,42 @@ void searchAndReplaceObject::removeHighlights(){
     cursor.mergeCharFormat(plainFormat);
 
     cursor.endEditBlock();
-    // statusBar()->clearMessage();
-    // searchAndReplaceStatusLabel->clear();
 }
 
 void searchAndReplaceObject::showWidget(){
-    this->show();
+    this->showNormal();
     searchTextLineEdit->setFocus();
 }
+
+void searchAndReplaceObject::goToPreviousSelection(){
+
+    if(selectedOccurenceIndex == 1) selectedOccurenceIndex = foundOccurrences.size(); // loops it around to restart at the top
+    else selectedOccurenceIndex--;
+    QString text = QString::number(selectedOccurenceIndex) + " / " + QString::number(foundOccurrences.size());
+    occurenceIteratorLabel->setText(text);
+
+
+    auto textcursor = editor->textCursor();
+    textcursor.setPosition(foundOccurrences.at(selectedOccurenceIndex-1).position());
+    editor->setTextCursor(textcursor);
+
+
+}
+void searchAndReplaceObject::goToNextSelection(){
+
+    if(selectedOccurenceIndex == foundOccurrences.size()) selectedOccurenceIndex = 1;
+    else{
+        selectedOccurenceIndex++;
+    }
+    QString text = QString::number(selectedOccurenceIndex) + " / " + QString::number(foundOccurrences.size());
+    occurenceIteratorLabel->setText(text);
+
+    // if they press next and its at the maximum it loops back to 1
+    auto textcursor = editor->textCursor();
+    textcursor.setPosition(foundOccurrences.at(selectedOccurenceIndex-1).position());
+    editor->setTextCursor(textcursor);
+    // occurenceIteratorLabel->setText()
+
+}
+
+

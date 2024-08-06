@@ -8,12 +8,14 @@
 #include <QPushButton>
 #include "ui_mainwindow.h"
 #include <QCheckBox>
+#include <QFrame>
 // #include <QBoxLayout>
 
 
-class searchAndReplaceObject : public QWidget
+class searchAndReplaceObject : public QDockWidget
 {
     Q_OBJECT
+
 
 public:
     // explicit searchAndReplaceObject(QWidget *parent = nullptr);
@@ -30,6 +32,9 @@ public slots:
     void onReplaceClicked();
     void removeHighlights();
     void showWidget();
+    void goToPreviousSelection();
+    void goToNextSelection();
+
 
 private:
     QLineEdit* searchTextLineEdit;
@@ -39,6 +44,13 @@ private:
     QCheckBox* isMatchWholeWord;
     QPushButton* replaceTextButton;
     QPlainTextEdit* editor;  // Declare the editor member variable
+
+
+    QPushButton* nextMatchButton;
+    QPushButton* prevMatchButton;
+    QLabel* occurenceIteratorLabel;
+
+    int selectedOccurenceIndex;
     // QWidget* searchAndReplaceContainer;
     // QHBoxLayout fullLayoutParent;
 
