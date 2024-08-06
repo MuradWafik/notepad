@@ -93,6 +93,11 @@
                 <height>0</height>
                </size>
               </property>
+              <property name="font">
+               <font>
+                <underline>true</underline>
+               </font>
+              </property>
               <property name="focusPolicy">
                <enum>Qt::FocusPolicy::NoFocus</enum>
               </property>

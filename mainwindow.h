@@ -11,12 +11,12 @@
 #include <QScrollBar>
 #include <QDebug>
 #include <QTextBlock>
-#include <QDebug>
 #include <QProcess>
 #include <QTreeView>
 #include <QFileSystemModel>
 #include <QCheckBox>
 #include <QVector>
+#include "searchandreplaceobject.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -74,10 +74,9 @@ private slots:
     void adjustSearchLineEditPosition();
     void resizeEvent(QResizeEvent*);
 
-    void searchForText(const QString &text);
-    void removeHighlights();
+
     void saveFile();
-    void replaceText();
+
     void createSearchAndReplaceWidgets();
 
 
@@ -115,21 +114,7 @@ private:
 
     QFileSystemModel *fileModel; // the file explorer  on the left for treeview
 
-    QLineEdit* searchLineEdit;
-    QLineEdit* replaceLineEdit;
-    QPushButton* replaceTextButton;
-    QVBoxLayout* searchAndReplaceParent;
-    QWidget* searchAndReplaceContainer;
 
-    QCheckBox* isCaseSensitive;
-    QCheckBox* isMatchWholeWord;
-    QVBoxLayout* checkBoxesParent;
-
-    QHBoxLayout* fullLayoutParent;
-    QPushButton* hidePopUpButton;
-
-
-    int foundTextMatchCount;
     QVector<QTextCursor> foundOccurrences;
     QString startTerminalCommand;
 
@@ -139,5 +124,7 @@ private:
     // QHBoxLayout* statusBarLayout;
     QLabel* lineAndColStatusLabel;
     QLabel* searchAndReplaceStatusLabel;
+    searchAndReplaceObject* searchReplaceWidget;
+    // searchAndReplaceObject obj;
 };
 #endif // MAINWINDOW_H

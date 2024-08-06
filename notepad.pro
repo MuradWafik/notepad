@@ -10,10 +10,12 @@ CONFIG += c++17
 
 SOURCES += \
     main.cpp \
-    mainwindow.cpp
+    mainwindow.cpp \
+    searchandreplaceobject.cpp
 
 HEADERS += \
-    mainwindow.h
+    mainwindow.h \
+    searchandreplaceobject.h
 
 FORMS += \
     mainwindow.ui
