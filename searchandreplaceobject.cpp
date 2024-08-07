@@ -241,35 +241,55 @@ void searchAndReplaceObject::showWidget(){
     searchTextLineEdit->setFocus();
 }
 
-void searchAndReplaceObject::goToPreviousSelection(){
+void searchAndReplaceObject::goToPreviousSelection() {
+    // same as go to next
+    QTextCursor cursor = foundOccurrences.at(selectedOccurenceIndex-1);
+    QTextCharFormat oldCursorPosFormat;
+    oldCursorPosFormat.setBackground(Qt::blue);
+    cursor.setCharFormat(oldCursorPosFormat);
 
-    if(selectedOccurenceIndex == 1) selectedOccurenceIndex = foundOccurrences.size(); // loops it around to restart at the top
+    if (selectedOccurenceIndex == 1) selectedOccurenceIndex = foundOccurrences.size(); // loops it around to restart at the top
     else selectedOccurenceIndex--;
+
+    QTextCursor currentCursor = foundOccurrences.at(selectedOccurenceIndex - 1);
+    QTextCharFormat currentSelectionFormat;
+    currentSelectionFormat.setBackground(Qt::yellow); // Or any color you prefer
+    currentCursor.setCharFormat(currentSelectionFormat);
+
     QString text = QString::number(selectedOccurenceIndex) + " / " + QString::number(foundOccurrences.size());
     occurenceIteratorLabel->setText(text);
 
 
-    auto textcursor = editor->textCursor();
-    textcursor.setPosition(foundOccurrences.at(selectedOccurenceIndex-1).position());
-    editor->setTextCursor(textcursor);
-
-
+    editor->setTextCursor(currentCursor);
 }
-void searchAndReplaceObject::goToNextSelection(){
 
-    if(selectedOccurenceIndex == foundOccurrences.size()) selectedOccurenceIndex = 1;
-    else{
-        selectedOccurenceIndex++;
-    }
+void searchAndReplaceObject::goToNextSelection() {
+
+    // resets the color of the previously selected word back to blue
+    QTextCursor cursor = foundOccurrences.at(selectedOccurenceIndex-1);
+    QTextCharFormat oldCursorPosFormat;
+    oldCursorPosFormat.setBackground(Qt::blue);
+    cursor.setCharFormat(oldCursorPosFormat);
+
+    if (selectedOccurenceIndex == foundOccurrences.size()) selectedOccurenceIndex = 1;
+    else selectedOccurenceIndex++;
+
+    // changes the current highlighted word color
+    QTextCursor currentCursor = foundOccurrences.at(selectedOccurenceIndex - 1);
+    QTextCharFormat currentSelectionFormat;
+    currentSelectionFormat.setBackground(Qt::cyan);
+    currentCursor.setCharFormat(currentSelectionFormat);
+
+
     QString text = QString::number(selectedOccurenceIndex) + " / " + QString::number(foundOccurrences.size());
     occurenceIteratorLabel->setText(text);
 
-    // if they press next and its at the maximum it loops back to 1
-    auto textcursor = editor->textCursor();
-    textcursor.setPosition(foundOccurrences.at(selectedOccurenceIndex-1).position());
-    editor->setTextCursor(textcursor);
-    // occurenceIteratorLabel->setText()
-
+    // sets text cursor to the current selection
+    editor->setTextCursor(currentCursor);
 }
 
-
+void searchAndReplaceObject::closeEvent(QCloseEvent *event)
+{
+    removeHighlights(); // closed highlights then calls on the default close event
+    QDockWidget::closeEvent(event);
+}

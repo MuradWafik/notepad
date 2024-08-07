@@ -38,9 +38,7 @@ private slots:
     void on_actionSave_As_triggered();
 
     void on_actionSave_triggered();
-
     void on_plainTextEdit_cursorPositionChanged();
-
     void on_plainTextEdit_blockCountChanged(int newBlockCount);
 
     void createLineNumbersOnFileOpen(const int lineNumbers);
@@ -50,15 +48,9 @@ private slots:
     void initTerminalBox();
     void on_StdoutAvailable();
     void on_StderrAvailable(); // errors from the terminal
-
     void on_inputTerminalCommand_returnPressed();
-
     void setUIChanges();
-
     void on_pushButton_clicked();
-
-
-
     void on_actionShow_Terminal_triggered();
 
     void on_actionHide_Terminal_triggered();
@@ -72,32 +64,30 @@ private slots:
 
     void updateTerminalAndOutput();
     void adjustSearchLineEditPosition();
-    void resizeEvent(QResizeEvent*);
-
+    void resizeEvent(QResizeEvent*) override;
 
     void saveFile();
-
     void createSearchAndReplaceWidgets();
 
-
-
     void on_actionFind_Replace_triggered();
-
-
     void on_actionOpen_Folder_triggered();
-
     void on_actionUndo_triggered();
     void updateWindowTitle();
 
     QString getShellCommand();
-
     void on_actionShow_File_P_triggered();
-
     void on_actionClear_Terminal_triggered();
-
     void on_actionRedo_triggered();
-
     void on_actionSelect_All_triggered();
+    void showCustomContextMenu(const QPoint &pos);
+    void openFileAction(QString filePath);
+    void createPythonFile(const QPoint &clickPoint);
+    void createTextFile(const QPoint &clickPoint);
+
+    void on_actionNew_triggered();
+    void connectSignals();
+
+    void on_actionNew_Text_File_triggered();
 
 protected:
     // void keyPressEvent(QKeyEvent *event) override;  // Declaration of keyPressEvent

@@ -24,6 +24,10 @@ public:
 
 signals:
 
+protected slots:
+    void closeEvent(QCloseEvent *event) override;
+
+
 public slots:
     // funcs
     void searchForText(const QString& text);
@@ -34,6 +38,8 @@ public slots:
     void showWidget();
     void goToPreviousSelection();
     void goToNextSelection();
+
+
 
 
 private:

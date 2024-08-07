@@ -14,22 +14,14 @@ MainWindow::MainWindow(QWidget *parent)
     this->ui->actionSave->setEnabled(false);
     this->setCentralWidget(ui->stackedWidget);
     this->ui->stackedWidget->setCurrentWidget(this->ui->page);
+    QDir::setCurrent(QDir::homePath());
 
-
-
-    connect(ui->lineNumPlainTextEdit->verticalScrollBar(), &QScrollBar::valueChanged, this, &MainWindow::synchronizeScrollbars);
-    connect(ui->plainTextEdit->verticalScrollBar(), &QScrollBar::valueChanged, this, &MainWindow::synchronizeScrollbars);
-    // connects the scroll bars of the text box the user types in with the line number text
 
     setUIChanges();
-    // createStatusBarWidget();
     createSearchAndReplaceWidgets();
-
-    connect(this->ui->plainTextEdit, &QPlainTextEdit::textChanged, this, &MainWindow::updateWindowTitle);
 
     ui->plainTextEdit->installEventFilter(this);
     startTerminalCommand = getShellCommand(); // differentiates the terminial start based on the operating system
-
 
     searchReplaceWidget = new searchAndReplaceObject(this->ui->plainTextEdit, this->ui->plainTextEdit);
     // references the plaintextedit as the parent and the editor used
@@ -77,6 +69,7 @@ void MainWindow::on_actionOpen_File_triggered()
 
     QString fileName = QFileDialog::getOpenFileName(this, ("Choose File To Open"));
 
+    // setOption(QFileDialog.ReadOnly, true);
     openFile(fileName);
     getAllFilesInDirectory();
     adjustSearchLineEditPosition();
@@ -281,6 +274,9 @@ void MainWindow::getAllFilesInDirectory(){
     fileModel->setNameFilterDisables(false); // makes the files that arent within filter hidden instead of shown as disabled
 
     this->ui->fileListTree->setModel(fileModel);
+    this->ui->fileListTree->setContextMenuPolicy(Qt::CustomContextMenu); // allows the right click to show custom menu
+
+
     fileModel->setRootPath(directory.path());
     ui->fileListTree->setRootIndex(fileModel->index(directory.path()));
 }
@@ -532,5 +528,220 @@ void MainWindow::on_actionSelect_All_triggered()
     } else if (auto lineEdit = qobject_cast<QLineEdit*>(focusedWidget)) {
         lineEdit->selectAll();
     } // tries to cast the focused widget into one of these, if possible calls on the built in select ll function
+}
+
+void MainWindow::showCustomContextMenu(const QPoint &pos){
+    QModelIndex index = this->ui->fileListTree->indexAt(pos);
+    if (!index.isValid()) return;
+    QString fileToOpenPath = fileModel->filePath(index);
+
+
+    QMenu contextMenu(tr("Context menu"), this);
+
+    QAction newPythonAction("New Python File", this);
+    connect(&newPythonAction, &QAction::triggered, this,[this, pos]{
+        createPythonFile(pos);
+    });
+    contextMenu.addAction(&newPythonAction);
+    QAction newTextFile("New Text File", this);
+
+    QAction openAction("Open", this);
+    connect(&openAction, &QAction::triggered, this, [this, fileToOpenPath]() { openFileAction(fileToOpenPath); });
+    contextMenu.addAction(&openAction);
+
+    QAction deleteAction("Delete", this);
+    connect(&deleteAction, &QAction::triggered, this, [this, fileToOpenPath]() {
+        if(fileToOpenPath == currentFile){
+            QMessageBox::warning(this, "Error", "Can not delete file that is currently open");
+            return;
+        }
+        QFile::remove(fileToOpenPath);
+    });
+    contextMenu.addAction(&deleteAction);
+
+    contextMenu.exec(this->ui->fileListTree->viewport()->mapToGlobal(pos));
+
+}
+
+void MainWindow::openFileAction(QString filePath){
+    // checks to see if there are changes with the file before opening
+    if(!textIsSameAfterSave){
+        QMessageBox::StandardButton saveQuestion = QMessageBox::question(this, "Save?",
+                                                                         "Would you like to save changes before switching",
+                                                                         QMessageBox::Save | QMessageBox::Discard, QMessageBox::Save);
+        if(saveQuestion == QMessageBox::Save) saveFile();
+    }
+    openFile(filePath);
+
+
+}
+
+
+
+void MainWindow::createPythonFile(const QPoint &clickPoint) {
+
+    QPoint globalPos = this->ui->fileListTree->viewport()->mapToGlobal(clickPoint);
+
+    // finds the click point to place it at the same position of the click, while only being parented to the main window
+    QPoint mainWindowPos = this->mapFromGlobal(globalPos);
+
+    QString fileDefaultText = "file.py";
+
+    QLineEdit* fileNameLine = new QLineEdit(this);
+    fileNameLine->move(mainWindowPos);  // Adjusted to widget coordinates
+    fileNameLine->setText(fileDefaultText);
+    fileNameLine->setFixedWidth(150);
+    fileNameLine->show();
+    fileNameLine->setFocus();
+
+    fileNameLine->setSelection(0, fileDefaultText.length()-3 ); // removes the .py suffix in the default selection so user can auto change file name
+
+
+    // connects return pressed signal to create the file
+    connect(fileNameLine, &QLineEdit::returnPressed, this, [this, fileNameLine]() {
+        QString fileName = fileNameLine->text();
+        if (!fileName.endsWith(".py")) {
+            fileName += ".py";
+        }
+
+        QDir filePath = QFileInfo(currentFile).dir();
+        QFile file(filePath.absolutePath() + "/" + fileName);
+        qDebug() << file.fileName();
+        if (!file.open(QIODevice::WriteOnly)) {
+            QMessageBox::warning(this, "Error", "Unable to open file " + file.errorString());
+            // delete lineedit and return if error opening file
+            delete fileNameLine;
+            return;
+        }
+        file.close();
+        fileNameLine->deleteLater();
+    });
+
+    // deletes line edit if user clicks out of it, or if it loses focus in any way
+    connect(fileNameLine, &QLineEdit::editingFinished, this, [fileNameLine]() {
+        fileNameLine->deleteLater();
+    });
+}
+
+void MainWindow::createTextFile(const QPoint &clickPoint) {
+
+    QPoint globalPos = this->ui->fileListTree->viewport()->mapToGlobal(clickPoint);
+
+    // finds the click point to place it at the same position of the click, while only being parented to the main window
+    QPoint mainWindowPos = this->mapFromGlobal(globalPos);
+
+    QString fileDefaultText = "file.txt";
+
+    QLineEdit* fileNameLine = new QLineEdit(this);
+    fileNameLine->move(mainWindowPos);  // Adjusted to widget coordinates
+    fileNameLine->setText(fileDefaultText);
+    fileNameLine->setFixedWidth(150);
+    fileNameLine->show();
+    fileNameLine->setFocus();
+
+    fileNameLine->setSelection(0, fileDefaultText.length()-3 ); // removes the .py suffix in the default selection so user can auto change file name
+
+
+    // connects return pressed signal to create the file
+    connect(fileNameLine, &QLineEdit::returnPressed, this, [this, fileNameLine]() {
+        QString fileName = fileNameLine->text();
+        if (!fileName.endsWith(".txt")) {
+            fileName += ".txt";
+        }
+
+        QDir filePath = QFileInfo(currentFile).dir();
+        QFile file(filePath.absolutePath() + "/" + fileName);
+        qDebug() << file.fileName();
+        if (!file.open(QIODevice::WriteOnly)) {
+            QMessageBox::warning(this, "Error", "Unable to open file " + file.errorString());
+            // delete lineedit and return if error opening file
+            delete fileNameLine;
+            return;
+        }
+        file.close();
+        fileNameLine->deleteLater();
+    });
+
+    // deletes line edit if user clicks out of it, or if it loses focus in any way
+    connect(fileNameLine, &QLineEdit::editingFinished, this, [fileNameLine]() {
+        fileNameLine->deleteLater();
+    });
+}
+
+
+void MainWindow::on_actionNew_triggered()
+{
+    // QString fileName = QFileDialog::
+    QString fileName = QFileDialog::getSaveFileName(this,
+                                                    "Create New Python File",
+                                                    QDir::homePath(),  // Default directory
+                                                    "Python Files (*.py);;All Files (*)");
+
+    // do nothing if they cancel, maybe show message warning later on
+    if (fileName.isEmpty()) {
+        return;
+    }
+
+    // makes sure file has python extention
+    if (!fileName.endsWith(".py")) {
+        fileName += ".py";
+    }
+
+
+    QFile file(fileName);
+    if (!file.open(QIODevice::WriteOnly)) {
+        QMessageBox::warning(this, "Error", "Failed to create the file: " + file.errorString());
+        return;
+    }
+
+
+    // QMessageBox::information(this, "File Created"), "Python file created successfully.");
+
+    file.close();
+
+    openFile(fileName);
+    getAllFilesInDirectory();
+    adjustSearchLineEditPosition();
+}
+
+void MainWindow::connectSignals(){
+    connect(ui->lineNumPlainTextEdit->verticalScrollBar(), &QScrollBar::valueChanged, this, &MainWindow::synchronizeScrollbars);
+    connect(ui->plainTextEdit->verticalScrollBar(), &QScrollBar::valueChanged, this, &MainWindow::synchronizeScrollbars);
+    // connects the scroll bars of the text box the user types in with the line number text
+
+    connect(this->ui->plainTextEdit, &QPlainTextEdit::textChanged, this, &MainWindow::updateWindowTitle);
+    connect(this->ui->fileListTree, &QWidget::customContextMenuRequested, this, &MainWindow::showCustomContextMenu);
+
+}
+
+
+void MainWindow::on_actionNew_Text_File_triggered()
+{
+    QString fileName = QFileDialog::getSaveFileName(this,
+                                                    "Create New Text File File",
+                                                    QDir::homePath(),  // Default directory
+                                                    "Text Files (*.txt);;All Files (*)");
+
+    // do nothing if they cancel, maybe show message warning later on
+    if (fileName.isEmpty()) {
+        return;
+    }
+
+    // makes sure file has txt extention
+    if (!fileName.endsWith(".txt")) {
+        fileName += ".txt";
+    }
+
+    QFile file(fileName);
+    if (!file.open(QIODevice::WriteOnly)) {
+        QMessageBox::warning(this, "Error", "Failed to create the file: " + file.errorString());
+        return;
+    }
+
+    file.close();
+
+    openFile(fileName);
+    getAllFilesInDirectory();
+    adjustSearchLineEditPosition();
 }
 
