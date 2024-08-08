@@ -538,24 +538,6 @@ void MainWindow::showCustomContextMenu(const QPoint &pos){
 
     QMenu contextMenu(tr("Context menu"), this);
 
-    if (index.isValid()){ // if they clicked on a part that has a file
-        // actions that need a file to be clicked on
-        QAction deleteAction("Delete", this);
-        connect(&deleteAction, &QAction::triggered, this, [this, fileToOpenPath]() {
-            if(fileToOpenPath == currentFile){
-                QMessageBox::warning(this, "Error", "Can not delete file that is currently open");
-                return;
-            }
-            QFile::remove(fileToOpenPath);
-        });
-        contextMenu.addAction(&deleteAction);
-
-        QAction openAction("Open", this);
-        connect(&openAction, &QAction::triggered, this, [this, fileToOpenPath]() { openFileAction(fileToOpenPath); });
-        contextMenu.addAction(&openAction);
-
-    }
-
 
     QAction newPythonAction("New Python File", this);
     connect(&newPythonAction, &QAction::triggered, this,[this, pos]{
@@ -568,6 +550,28 @@ void MainWindow::showCustomContextMenu(const QPoint &pos){
         createTextFile(pos);
     });
     contextMenu.addAction(&newTextFileAction);
+
+
+
+    QAction deleteAction("Delete", this);
+    connect(&deleteAction, &QAction::triggered, this, [this, fileToOpenPath]() {
+        if(fileToOpenPath == currentFile){
+            QMessageBox::warning(this, "Error", "Can not delete file that is currently open");
+            return;
+        }
+        QFile::remove(fileToOpenPath);
+    });
+
+    QAction openAction("Open", this);
+    connect(&openAction, &QAction::triggered, this, [this, fileToOpenPath]() { openFileAction(fileToOpenPath); });
+    qDebug() << index.isValid();
+
+    if (index.isValid()){ // if they clicked on a part that has a file
+        // actions that need a file to be clicked on
+        contextMenu.addAction(&deleteAction);
+
+        contextMenu.addAction(&openAction);
+    }
 
 
 
