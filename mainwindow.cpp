@@ -25,6 +25,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     searchReplaceWidget = new searchAndReplaceObject(this->ui->plainTextEdit, this->ui->plainTextEdit);
     // references the plaintextedit as the parent and the editor used
+    connectSignals();
 }
 
 MainWindow::~MainWindow()
@@ -188,7 +189,6 @@ void MainWindow::initTerminalBox(){
 void MainWindow::on_StdoutAvailable()
 { // when it is ready to be read, it reads the output and prints it to the terminal box
     if(!process->isOpen()){
-        qDebug() << "not open";
         return;
     }
     QByteArray terminalOutput = process->readAllStandardOutput();
@@ -198,7 +198,6 @@ void MainWindow::on_StdoutAvailable()
 void MainWindow::on_StderrAvailable(){
 
     if(!process->isOpen()){
-        qDebug() << "not open";
         return;
     }
     QByteArray terminalOutput = process->readAllStandardError();
@@ -300,7 +299,7 @@ void MainWindow::on_fileListTree_doubleClicked(const QModelIndex &index)
     QString fileToOpenPath = fileModel->filePath(index);
 
     // the current text on the document was altered and not saved
-    if(ui->plainTextEdit->toPlainText() != fileContentAfterSave){
+    if(!textIsSameAfterSave){
         QMessageBox::StandardButton saveFileQuestion = QMessageBox::question(this, "Save Before Swap",
                                                                              "Would You Like To Save the Previous File Before Switching?",
                                                                              QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
@@ -345,7 +344,6 @@ void MainWindow::updateTerminalAndOutput(){
         process->setWorkingDirectory(QFileInfo(currentFile).absolutePath());
     }
     else if(process->state() == QProcess::Starting){
-        qDebug() << "st starting";
     }
     else if(process->state() == QProcess::NotRunning){
         // if the process isnt running, initialize it
@@ -473,10 +471,14 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
         if (event->type() == QEvent::KeyPress) {
             QKeyEvent *keyEvent = static_cast<QKeyEvent *>(event);
             if (keyEvent->key() == Qt::Key_Tab) {
-                qDebug()<<"tab";
                 QTextCursor cursor = ui->plainTextEdit->textCursor();
                 cursor.insertText("   "); // Insert four spaces
                 return true; // Event handled, don't pass it to the base class
+            }
+            else if((keyEvent->modifiers() & Qt::ControlModifier) && keyEvent->key() == Qt::Key_Slash) {
+
+                commentLines();
+                return true;
             }
         }
     }
@@ -532,32 +534,44 @@ void MainWindow::on_actionSelect_All_triggered()
 
 void MainWindow::showCustomContextMenu(const QPoint &pos){
     QModelIndex index = this->ui->fileListTree->indexAt(pos);
-    if (!index.isValid()) return;
     QString fileToOpenPath = fileModel->filePath(index);
 
-
     QMenu contextMenu(tr("Context menu"), this);
+
+    if (index.isValid()){ // if they clicked on a part that has a file
+        // actions that need a file to be clicked on
+        QAction deleteAction("Delete", this);
+        connect(&deleteAction, &QAction::triggered, this, [this, fileToOpenPath]() {
+            if(fileToOpenPath == currentFile){
+                QMessageBox::warning(this, "Error", "Can not delete file that is currently open");
+                return;
+            }
+            QFile::remove(fileToOpenPath);
+        });
+        contextMenu.addAction(&deleteAction);
+
+        QAction openAction("Open", this);
+        connect(&openAction, &QAction::triggered, this, [this, fileToOpenPath]() { openFileAction(fileToOpenPath); });
+        contextMenu.addAction(&openAction);
+
+    }
+
 
     QAction newPythonAction("New Python File", this);
     connect(&newPythonAction, &QAction::triggered, this,[this, pos]{
         createPythonFile(pos);
     });
     contextMenu.addAction(&newPythonAction);
-    QAction newTextFile("New Text File", this);
 
-    QAction openAction("Open", this);
-    connect(&openAction, &QAction::triggered, this, [this, fileToOpenPath]() { openFileAction(fileToOpenPath); });
-    contextMenu.addAction(&openAction);
-
-    QAction deleteAction("Delete", this);
-    connect(&deleteAction, &QAction::triggered, this, [this, fileToOpenPath]() {
-        if(fileToOpenPath == currentFile){
-            QMessageBox::warning(this, "Error", "Can not delete file that is currently open");
-            return;
-        }
-        QFile::remove(fileToOpenPath);
+    QAction newTextFileAction("New Text File", this);
+    connect(&newTextFileAction, &QAction::triggered, this,[this, pos]{
+        createTextFile(pos);
     });
-    contextMenu.addAction(&deleteAction);
+    contextMenu.addAction(&newTextFileAction);
+
+
+
+
 
     contextMenu.exec(this->ui->fileListTree->viewport()->mapToGlobal(pos));
 
@@ -572,11 +586,7 @@ void MainWindow::openFileAction(QString filePath){
         if(saveQuestion == QMessageBox::Save) saveFile();
     }
     openFile(filePath);
-
-
 }
-
-
 
 void MainWindow::createPythonFile(const QPoint &clickPoint) {
 
@@ -588,7 +598,7 @@ void MainWindow::createPythonFile(const QPoint &clickPoint) {
     QString fileDefaultText = "file.py";
 
     QLineEdit* fileNameLine = new QLineEdit(this);
-    fileNameLine->move(mainWindowPos);  // Adjusted to widget coordinates
+    fileNameLine->move(mainWindowPos);
     fileNameLine->setText(fileDefaultText);
     fileNameLine->setFixedWidth(150);
     fileNameLine->show();
@@ -606,7 +616,6 @@ void MainWindow::createPythonFile(const QPoint &clickPoint) {
 
         QDir filePath = QFileInfo(currentFile).dir();
         QFile file(filePath.absolutePath() + "/" + fileName);
-        qDebug() << file.fileName();
         if (!file.open(QIODevice::WriteOnly)) {
             QMessageBox::warning(this, "Error", "Unable to open file " + file.errorString());
             // delete lineedit and return if error opening file
@@ -629,17 +638,16 @@ void MainWindow::createTextFile(const QPoint &clickPoint) {
 
     // finds the click point to place it at the same position of the click, while only being parented to the main window
     QPoint mainWindowPos = this->mapFromGlobal(globalPos);
-
     QString fileDefaultText = "file.txt";
 
     QLineEdit* fileNameLine = new QLineEdit(this);
-    fileNameLine->move(mainWindowPos);  // Adjusted to widget coordinates
+    fileNameLine->move(mainWindowPos);
     fileNameLine->setText(fileDefaultText);
     fileNameLine->setFixedWidth(150);
     fileNameLine->show();
     fileNameLine->setFocus();
 
-    fileNameLine->setSelection(0, fileDefaultText.length()-3 ); // removes the .py suffix in the default selection so user can auto change file name
+    fileNameLine->setSelection(0, fileDefaultText.length()-4 ); // removes the .txt suffix in the default selection so user can auto change file name
 
 
     // connects return pressed signal to create the file
@@ -651,7 +659,6 @@ void MainWindow::createTextFile(const QPoint &clickPoint) {
 
         QDir filePath = QFileInfo(currentFile).dir();
         QFile file(filePath.absolutePath() + "/" + fileName);
-        qDebug() << file.fileName();
         if (!file.open(QIODevice::WriteOnly)) {
             QMessageBox::warning(this, "Error", "Unable to open file " + file.errorString());
             // delete lineedit and return if error opening file
@@ -687,16 +694,12 @@ void MainWindow::on_actionNew_triggered()
         fileName += ".py";
     }
 
-
     QFile file(fileName);
     if (!file.open(QIODevice::WriteOnly)) {
         QMessageBox::warning(this, "Error", "Failed to create the file: " + file.errorString());
         return;
     }
-
-
     // QMessageBox::information(this, "File Created"), "Python file created successfully.");
-
     file.close();
 
     openFile(fileName);
@@ -745,3 +748,105 @@ void MainWindow::on_actionNew_Text_File_triggered()
     adjustSearchLineEditPosition();
 }
 
+void MainWindow::commentLines(){
+    auto textCursor = this->ui->plainTextEdit->textCursor();
+    // how commenting out multiple lines works
+    // multiple lines selected -> if they are all comments it uncomments
+    // otherwise it adds another comment symbol, though this makes more sense with "//" coments and not "#"
+    // additionally, if the user has no text selected, the comment toggle affects the start of the line,
+    // otherwise it goes by each line of the selection
+
+    if(textCursor.hasSelection()){
+        QString text = textCursor.selection().toPlainText();
+
+        QStringList textSplit = text.split("\n");
+        // qDebug() << textSplit.at(2);
+        bool everyLineStartsWithComment = true; // assumes every line is a comment, then loops to check, if one doesnt, it breaks
+        for(QString &line : textSplit){
+            if(!line.startsWith("#")){
+            everyLineStartsWithComment = false;
+            break;
+            }
+        }
+        if(everyLineStartsWithComment) removeComments();
+        else addComments();
+        return;
+    }
+
+    QString currentLine = textCursor.block().text();
+    if (currentLine.startsWith("#")) {
+        removeComments();
+    } else {
+        addComments();
+    }
+
+
+}
+
+void MainWindow::addComments() {
+    auto textCursor = this->ui->plainTextEdit->textCursor();
+    // case when not every line is a comment
+
+    // original cursor positions to revert
+    int start = textCursor.selectionStart();
+    // int end = textCursor.selectionEnd();
+
+    QString text = textCursor.selection().toPlainText();
+    QStringList textSplit = text.split("\n");
+    QStringList finalText;
+    const QChar commentSymbol = '#';
+    if(textCursor.hasSelection()){
+
+
+        for(QString& line : textSplit) {
+            finalText << commentSymbol + line;
+        }
+        // turns the list back to a single string
+        QString commentedText = finalText.join("\n");
+
+        // replaces text
+        textCursor.insertText(commentedText);
+
+        // brings cursor back to original position
+        textCursor.setPosition(start);
+        textCursor.setPosition(start + commentedText.length(), QTextCursor::KeepAnchor);
+        this->ui->plainTextEdit->setTextCursor(textCursor);
+        }
+
+    else{
+            // textCursor.insertText("#");
+            textCursor.movePosition(QTextCursor::StartOfLine);
+            textCursor.insertText("#");
+        }
+}
+
+
+void MainWindow::removeComments(){
+    auto textCursor = this->ui->plainTextEdit->textCursor();
+    if (textCursor.hasSelection()) {
+        int start = textCursor.selectionStart();
+        QString text = textCursor.selection().toPlainText();
+        QStringList textSplit = text.split("\n");
+        QStringList finalText;
+        const QChar commentSymbol = '#';
+        for(QString& line : textSplit){
+            if (line.startsWith(commentSymbol)) {
+                line.remove(0, 1);
+            }
+            finalText << line;
+        }
+        QString uncommentedText = finalText.join("\n");
+        textCursor.insertText(uncommentedText);
+        textCursor.setPosition(start);
+        textCursor.setPosition(start + uncommentedText.length(), QTextCursor::KeepAnchor);
+        this->ui->plainTextEdit->setTextCursor(textCursor);
+    }
+    else {
+        textCursor.movePosition(QTextCursor::StartOfLine);
+        QString currentLine = textCursor.block().text();
+        // qDebug() << currentLine;
+        if (currentLine.startsWith("#")) {
+            textCursor.deleteChar();
+        }
+    }
+}

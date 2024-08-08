@@ -9,6 +9,15 @@ searchAndReplaceObject::searchAndReplaceObject(QPlainTextEdit* editor, QWidget* 
     this->hide();
 
 }
+searchAndReplaceObject::~searchAndReplaceObject() {
+    // Any custom cleanup code here
+
+
+    foundOccurrences.clear();
+    delete isMatchWholeWord;
+    delete isCaseSensitive;
+
+}
 
 void searchAndReplaceObject::setupUI(){
     // FULL NEW STRUCTURE
@@ -75,8 +84,8 @@ void searchAndReplaceObject::setupUI(){
     nextMatchButton->setIcon(qApp->style()->standardIcon(QStyle::SP_ArrowForward));
     // nextMatchButton.image
     prevMatchButton->setIcon(qApp->style()->standardIcon(QStyle::SP_ArrowBack)); // means left unless the layout of language is right to left
-    // nextMatchButton->setStyleSheet("QPushButton:hover{ background-color: lightgray;}");
-    nextMatchButton->setStyleSheet(""); // This resets to default
+
+    nextMatchButton->setStyleSheet("QPushButton:hover{ background-color: lightgray;}");
 
     prevMatchButton->setStyleSheet("QPushButton:hover{ background-color: lightgray;}");
     prevAndNextButtonsLayout->addWidget(prevMatchButton);
@@ -89,7 +98,6 @@ void searchAndReplaceObject::setupUI(){
     QHBoxLayout* bottomLayout = new QHBoxLayout(bottomEmptyWidget);
 
     replaceTextButton = new QPushButton("Replace All");
-
 
     QHBoxLayout* checkBoxesParent = new QHBoxLayout;
 
@@ -253,7 +261,7 @@ void searchAndReplaceObject::goToPreviousSelection() {
 
     QTextCursor currentCursor = foundOccurrences.at(selectedOccurenceIndex - 1);
     QTextCharFormat currentSelectionFormat;
-    currentSelectionFormat.setBackground(Qt::yellow); // Or any color you prefer
+    currentSelectionFormat.setBackground(Qt::yellow);
     currentCursor.setCharFormat(currentSelectionFormat);
 
     QString text = QString::number(selectedOccurenceIndex) + " / " + QString::number(foundOccurrences.size());

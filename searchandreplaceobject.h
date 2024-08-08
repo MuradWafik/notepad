@@ -20,7 +20,8 @@ class searchAndReplaceObject : public QDockWidget
 public:
     // explicit searchAndReplaceObject(QWidget *parent = nullptr);
     // explicit searchAndReplaceObject(Ui::MainWindow *ui = nullptr);
-    explicit searchAndReplaceObject(QPlainTextEdit* editor, QWidget* parent);
+    searchAndReplaceObject(QPlainTextEdit* editor, QWidget* parent);
+    ~searchAndReplaceObject();
 
 signals:
 

@@ -17,6 +17,7 @@
 #include <QCheckBox>
 #include <QVector>
 #include "searchandreplaceobject.h"
+#include <QTextDocumentFragment>
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -88,6 +89,10 @@ private slots:
     void connectSignals();
 
     void on_actionNew_Text_File_triggered();
+    void commentLines();
+
+    void addComments();
+    void removeComments();
 
 protected:
     // void keyPressEvent(QKeyEvent *event) override;  // Declaration of keyPressEvent
