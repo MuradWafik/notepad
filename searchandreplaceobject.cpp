@@ -83,7 +83,8 @@ void searchAndReplaceObject::setupUI(){
 
     nextMatchButton->setIcon(qApp->style()->standardIcon(QStyle::SP_ArrowForward));
     // nextMatchButton.image
-    prevMatchButton->setIcon(qApp->style()->standardIcon(QStyle::SP_ArrowBack)); // means left unless the layout of language is right to left
+    prevMatchButton->setIcon(qApp->style()->standardIcon(QStyle::SP_ArrowBack));
+    // means left unless the layout of language is right to left
 
     nextMatchButton->setStyleSheet("QPushButton:hover{ background-color: lightgray;}");
 
@@ -153,7 +154,7 @@ void searchAndReplaceObject::connectSignalsAndSlots() {
 
     connect(isCaseSensitive, &QCheckBox::clicked, this, [this](){
         searchForText(searchTextLineEdit->text());
-    }); // re does the search if either button is clicked
+    }); // redoes the search if either button is clicked
 
     connect(replaceTextButton, &QPushButton::clicked, this, &searchAndReplaceObject::onReplaceClicked);
 

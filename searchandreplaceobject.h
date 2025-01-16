@@ -50,7 +50,7 @@ private:
     QCheckBox* isCaseSensitive;
     QCheckBox* isMatchWholeWord;
     QPushButton* replaceTextButton;
-    QPlainTextEdit* editor;  // Declare the editor member variable
+    QPlainTextEdit* editor;
 
 
     QPushButton* nextMatchButton;

@@ -135,6 +135,11 @@
                 <height>40</height>
                </size>
               </property>
+              <property name="font">
+               <font>
+                <family>Courier</family>
+               </font>
+              </property>
               <property name="sizeAdjustPolicy">
                <enum>QAbstractScrollArea::SizeAdjustPolicy::AdjustToContents</enum>
               </property>

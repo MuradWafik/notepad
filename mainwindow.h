@@ -57,11 +57,11 @@ private slots:
     void on_actionHide_Terminal_triggered();
 
     void getAllFilesInDirectory();
-    void getAllFilesInDirectory(QString directory);
+    void getAllFilesInDirectory(QString &directory);
 
     void on_fileListTree_doubleClicked(const QModelIndex &index);
 
-    void openFile(const QString filePath);
+    void openFile(const QString &filePath);
 
     void updateTerminalAndOutput();
     void adjustSearchLineEditPosition();
@@ -81,7 +81,7 @@ private slots:
     void on_actionRedo_triggered();
     void on_actionSelect_All_triggered();
     void showCustomContextMenu(const QPoint &pos);
-    void openFileAction(QString filePath);
+    void openFileAction(QString &filePath);
     void createPythonFile(const QPoint &clickPoint);
     void createTextFile(const QPoint &clickPoint);
 
@@ -112,8 +112,6 @@ private:
 
     QVector<QTextCursor> foundOccurrences;
     QString startTerminalCommand;
-
-    bool textIsSameAfterSave;
 
     // QWidget* statusBarWidget;
     // QHBoxLayout* statusBarLayout;

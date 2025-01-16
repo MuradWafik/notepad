@@ -59,7 +59,7 @@ void MainWindow::createLineNumbersOnFileOpen(const int lineNumbers){
 void MainWindow::on_actionOpen_File_triggered()
 {
     // asks to save if they have any changes on current file they are working on before opening dialog
-    if(!ui->plainTextEdit->toPlainText().isEmpty() && !textIsSameAfterSave && !currentFile.isEmpty()){
+    if(!ui->plainTextEdit->toPlainText().isEmpty() && this->ui->plainTextEdit->document()->isModified() && !currentFile.isEmpty()){
         QMessageBox::StandardButton saveFileQuestion = QMessageBox::question(this, "Save Changes?", "Would you like To Save Changes Before Opening a New Folder?"
                                                                              , QMessageBox::Save | QMessageBox::Discard, QMessageBox::Save);
 
@@ -235,7 +235,7 @@ void MainWindow::setUIChanges(){
     QFontMetrics metrics(font);
     int spaceWidth = metrics.horizontalAdvance(' ');
 
-    // Set the tab stop distance to 4 spaces
+
     ui->plainTextEdit->setTabStopDistance(4 * spaceWidth);
 }
 
@@ -280,7 +280,7 @@ void MainWindow::getAllFilesInDirectory(){
     ui->fileListTree->setRootIndex(fileModel->index(directory.path()));
 }
 
-void MainWindow::getAllFilesInDirectory(QString directory){
+void MainWindow::getAllFilesInDirectory(QString &directory){
 
     QStringList filePaths(Qt::CaseInsensitive);
     filePaths << "*.py" << "*.txt" << "*.md" << "*.csv";
@@ -299,7 +299,7 @@ void MainWindow::on_fileListTree_doubleClicked(const QModelIndex &index)
     QString fileToOpenPath = fileModel->filePath(index);
 
     // the current text on the document was altered and not saved
-    if(!textIsSameAfterSave){
+    if(this->ui->plainTextEdit->document()->isModified()){
         QMessageBox::StandardButton saveFileQuestion = QMessageBox::question(this, "Save Before Swap",
                                                                              "Would You Like To Save the Previous File Before Switching?",
                                                                              QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
@@ -313,7 +313,7 @@ void MainWindow::on_fileListTree_doubleClicked(const QModelIndex &index)
     openFile(fileToOpenPath);
 }
 
-void MainWindow::openFile(const QString filePath){
+void MainWindow::openFile(const QString &filePath){
     QFile file(filePath);
     if(!file.open(QIODevice::ReadOnly | QFile::Text)){
         QMessageBox::warning(this, "Warning", "Can Not Open File " + file.errorString());
@@ -334,7 +334,7 @@ void MainWindow::openFile(const QString filePath){
     // the number of lines for the line counter, also stores the variable to see if the change was line added or removed
     createLineNumbersOnFileOpen(previousNumberOfLines);
     file.close();
-
+    this->ui->plainTextEdit->document()->setModified(false);
     updateTerminalAndOutput();
     updateWindowTitle();
 }
@@ -373,6 +373,7 @@ void MainWindow::saveFile(){
     }
 
     try {
+
         QFile file(currentFile);
         if(!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
             QMessageBox::warning(this, "Warning", "Unable to Save File " + file.errorString());
@@ -385,7 +386,7 @@ void MainWindow::saveFile(){
 
         file.close();
         fileContentAfterSave = text;  // Update the saved content tracker.
-
+        this->ui->plainTextEdit->document()->setModified(false);
         updateWindowTitle();
 
     } catch (const std::exception &e) {
@@ -418,7 +419,7 @@ void MainWindow::on_actionFind_Replace_triggered()
 void MainWindow::on_actionOpen_Folder_triggered()
 {
     // if they try to open folder while working on something that is not saved, it asks to save beforehand
-    if(!ui->plainTextEdit->toPlainText().isEmpty() && !textIsSameAfterSave){
+    if(!ui->plainTextEdit->toPlainText().isEmpty() && this->ui->plainTextEdit->document()->isModified()){
         QMessageBox::StandardButton saveFileQuestion = QMessageBox::question(this, "Save Changes?", "Would you like To Save Changes Before Opening a New Folder?"
                                  , QMessageBox::Save | QMessageBox::Discard, QMessageBox::Save);
 
@@ -455,11 +456,11 @@ void MainWindow::on_actionUndo_triggered()
 }
 
 void MainWindow::updateWindowTitle(){
-    textIsSameAfterSave = fileContentAfterSave == this->ui->plainTextEdit->toPlainText();
-    if(!textIsSameAfterSave){
+    // textIsSameAfterSave = fileContentAfterSave == this->ui->plainTextEdit->toPlainText();
+    if(this->ui->plainTextEdit->document()->isModified()){
         setWindowTitle(currentFile + " (Changes Not Saved)");
     }
-    else if(textIsSameAfterSave && windowTitle() != currentFile){
+    else if(!this->ui->plainTextEdit->document()->isModified() && windowTitle() != currentFile){
         setWindowTitle(currentFile);
     }
 }
@@ -470,12 +471,7 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
     if (obj == ui->plainTextEdit) {
         if (event->type() == QEvent::KeyPress) {
             QKeyEvent *keyEvent = static_cast<QKeyEvent *>(event);
-            if (keyEvent->key() == Qt::Key_Tab) {
-                QTextCursor cursor = ui->plainTextEdit->textCursor();
-                cursor.insertText("   "); // Insert four spaces
-                return true; // Event handled, don't pass it to the base class
-            }
-            else if((keyEvent->modifiers() & Qt::ControlModifier) && keyEvent->key() == Qt::Key_Slash) {
+            if((keyEvent->modifiers() & Qt::ControlModifier) && keyEvent->key() == Qt::Key_Slash) {
 
                 commentLines();
                 return true;
@@ -554,7 +550,7 @@ void MainWindow::showCustomContextMenu(const QPoint &pos){
 
 
     QAction deleteAction("Delete", this);
-    connect(&deleteAction, &QAction::triggered, this, [this, fileToOpenPath]() {
+    connect(&deleteAction, &QAction::triggered, this, [this, &fileToOpenPath]() {
         if(fileToOpenPath == currentFile){
             QMessageBox::warning(this, "Error", "Can not delete file that is currently open");
             return;
@@ -563,7 +559,7 @@ void MainWindow::showCustomContextMenu(const QPoint &pos){
     });
 
     QAction openAction("Open", this);
-    connect(&openAction, &QAction::triggered, this, [this, fileToOpenPath]() { openFileAction(fileToOpenPath); });
+    connect(&openAction, &QAction::triggered, this, [this, &fileToOpenPath]() { openFileAction(fileToOpenPath); });
     qDebug() << index.isValid();
 
     if (index.isValid()){ // if they clicked on a part that has a file
@@ -581,9 +577,9 @@ void MainWindow::showCustomContextMenu(const QPoint &pos){
 
 }
 
-void MainWindow::openFileAction(QString filePath){
+void MainWindow::openFileAction(QString &filePath){
     // checks to see if there are changes with the file before opening
-    if(!textIsSameAfterSave){
+    if(this->ui->plainTextEdit->document()->isModified()){
         QMessageBox::StandardButton saveQuestion = QMessageBox::question(this, "Save?",
                                                                          "Would you like to save changes before switching",
                                                                          QMessageBox::Save | QMessageBox::Discard, QMessageBox::Save);
@@ -716,7 +712,10 @@ void MainWindow::connectSignals(){
     connect(ui->plainTextEdit->verticalScrollBar(), &QScrollBar::valueChanged, this, &MainWindow::synchronizeScrollbars);
     // connects the scroll bars of the text box the user types in with the line number text
 
-    connect(this->ui->plainTextEdit, &QPlainTextEdit::textChanged, this, &MainWindow::updateWindowTitle);
+    connect(this->ui->plainTextEdit, &QPlainTextEdit::textChanged, this, [this]{
+        this->ui->plainTextEdit->document()->setModified(true);
+        updateWindowTitle();
+    });
     connect(this->ui->fileListTree, &QWidget::customContextMenuRequested, this, &MainWindow::showCustomContextMenu);
 
 }
@@ -802,7 +801,7 @@ void MainWindow::addComments() {
     if(textCursor.hasSelection()){
 
 
-        for(QString& line : textSplit) {
+        for(QString& line : textSplit){
             finalText << commentSymbol + line;
         }
         // turns the list back to a single string
