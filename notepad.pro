@@ -11,11 +11,15 @@ CONFIG += c++17
 SOURCES += \
     main.cpp \
     mainwindow.cpp \
-    searchandreplaceobject.cpp
+    pythoninstaller.cpp \
+    searchandreplaceobject.cpp \
+    syntaxhighlighter.cpp
 
 HEADERS += \
     mainwindow.h \
-    searchandreplaceobject.h
+    pythoninstaller.h \
+    searchandreplaceobject.h \
+    syntaxhighlighter.h
 
 FORMS += \
     mainwindow.ui

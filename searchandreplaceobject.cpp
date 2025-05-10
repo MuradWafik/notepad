@@ -1,4 +1,7 @@
 #include "searchandreplaceobject.h"
+#include <QBoxLayout>
+#include <QStyle>
+#include "ui_mainwindow.h"
 
 searchAndReplaceObject::searchAndReplaceObject(QPlainTextEdit* editor, QWidget* parent)
     : QDockWidget(parent)
@@ -79,7 +82,6 @@ void searchAndReplaceObject::setupUI(){
     connect(prevMatchButton, &QPushButton::clicked, this, &searchAndReplaceObject::goToPreviousSelection);
     nextMatchButton = new QPushButton;
     connect(nextMatchButton, &QPushButton::clicked, this, &searchAndReplaceObject::goToNextSelection);
-
 
     nextMatchButton->setIcon(qApp->style()->standardIcon(QStyle::SP_ArrowForward));
     // nextMatchButton.image

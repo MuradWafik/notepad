@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include "syntaxhighlighter.h"
 
 
 MainWindow::MainWindow(QWidget *parent)
@@ -326,6 +327,7 @@ void MainWindow::openFile(const QString &filePath){
     QTextStream in(&file);
 
     QString text = in.readAll();
+
     ui->plainTextEdit->setPlainText(text);
 
     fileContentAfterSave = text;
@@ -337,6 +339,10 @@ void MainWindow::openFile(const QString &filePath){
     this->ui->plainTextEdit->document()->setModified(false);
     updateTerminalAndOutput();
     updateWindowTitle();
+
+
+    // SyntaxHighlighter::searchTextForMatches(text);
+    SyntaxHighlighter::highlightText(text, this->ui->plainTextEdit);
 }
 
 void MainWindow::updateTerminalAndOutput(){
@@ -483,7 +489,7 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
 
 
 QString MainWindow::getShellCommand() {
-#ifdef _WIN32
+#ifdef _WIN32 // maybe change to user choice, maybe could use powershell
     return "cmd.exe";
 #else
     return "/bin/sh";

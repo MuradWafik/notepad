@@ -6,7 +6,9 @@
 #include <QWidget>
 #include <QLineEdit>
 #include <QPushButton>
-#include "ui_mainwindow.h"
+#include <QDockWidget>
+#include <QPlainTextEdit>
+#include <QLabel>
 #include <QCheckBox>
 #include <QFrame>
 // #include <QBoxLayout>
