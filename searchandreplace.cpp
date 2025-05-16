@@ -1,30 +1,27 @@
-#include "searchandreplaceobject.h"
+#include "searchandreplace.h"
 #include <QBoxLayout>
 #include <QStyle>
-#include "ui_mainwindow.h"
+// #include "ui_mainwindow.h"
+#include <QApplication>
 
-searchAndReplaceObject::searchAndReplaceObject(QPlainTextEdit* editor, QWidget* parent)
-    : QDockWidget(parent)
-    , editor(editor)
+SearchAndReplace::SearchAndReplace(QPlainTextEdit* editor)
+    : QDockWidget(editor),
+    editor(editor)
 {
     setupUI(); // makes the ui items and signal connections in constructor
     connectSignalsAndSlots();
     this->hide();
 
 }
-searchAndReplaceObject::~searchAndReplaceObject() {
-    // Any custom cleanup code here
-
-
+SearchAndReplace::~SearchAndReplace() {
     foundOccurrences.clear();
     delete isMatchWholeWord;
     delete isCaseSensitive;
-
 }
 
-void searchAndReplaceObject::setupUI(){
+void SearchAndReplace::setupUI(){
     // FULL NEW STRUCTURE
-//  Blank EMPTY widget -- search and replace container
+    //  Blank EMPTY widget -- search and replace container
     // QVbox  -- full layout parent
     //     QHbox	-- line edits and iterate layout
     //         QVBOX -- search and replace parent
@@ -46,16 +43,14 @@ void searchAndReplaceObject::setupUI(){
     //                 Case sensitive button
 
 
-// Ceates the ui objects in the structure above
+    // Ceates the ui objects in the structure above
     QFrame* searchAndReplaceContainer = new QFrame(this);
     searchAndReplaceContainer->setFrameShape(QFrame::Box);
     searchAndReplaceContainer->setAutoFillBackground(true);
-    // searchAndReplaceContainer.bac
     this->setWidget(searchAndReplaceContainer);
 
 
     QVBoxLayout* fullLayoutParent = new QVBoxLayout(searchAndReplaceContainer);
-    // fullLayoutParent->setAlignment(Qt::AlignHCenter);
 
     QHBoxLayout* lineEditsAndIterateLayout = new QHBoxLayout;
     QVBoxLayout* searchAndReplaceParent = new QVBoxLayout;
@@ -79,13 +74,13 @@ void searchAndReplaceObject::setupUI(){
 
     QHBoxLayout* prevAndNextButtonsLayout = new QHBoxLayout;
     prevMatchButton = new QPushButton;
-    connect(prevMatchButton, &QPushButton::clicked, this, &searchAndReplaceObject::goToPreviousSelection);
+    connect(prevMatchButton, &QPushButton::clicked, this, &SearchAndReplace::goToPreviousSelection);
     nextMatchButton = new QPushButton;
-    connect(nextMatchButton, &QPushButton::clicked, this, &searchAndReplaceObject::goToNextSelection);
+    connect(nextMatchButton, &QPushButton::clicked, this, &SearchAndReplace::goToNextSelection);
 
-    nextMatchButton->setIcon(qApp->style()->standardIcon(QStyle::SP_ArrowForward));
-    // nextMatchButton.image
-    prevMatchButton->setIcon(qApp->style()->standardIcon(QStyle::SP_ArrowBack));
+
+    nextMatchButton->setIcon(QApplication::style()->standardIcon(QStyle::SP_ArrowForward));
+    prevMatchButton->setIcon(QApplication::style()->standardIcon(QStyle::SP_ArrowBack));
     // means left unless the layout of language is right to left
 
     nextMatchButton->setStyleSheet("QPushButton:hover{ background-color: lightgray;}");
@@ -148,7 +143,7 @@ void searchAndReplaceObject::setupUI(){
 
 }
 
-void searchAndReplaceObject::connectSignalsAndSlots() {
+void SearchAndReplace::connectSignalsAndSlots() {
 
     connect(isMatchWholeWord, &QCheckBox::clicked, this, [this](){
         searchForText(searchTextLineEdit->text());
@@ -158,14 +153,14 @@ void searchAndReplaceObject::connectSignalsAndSlots() {
         searchForText(searchTextLineEdit->text());
     }); // redoes the search if either button is clicked
 
-    connect(replaceTextButton, &QPushButton::clicked, this, &searchAndReplaceObject::onReplaceClicked);
+    connect(replaceTextButton, &QPushButton::clicked, this, &SearchAndReplace::onReplaceClicked);
 
     connect(searchTextLineEdit, &QLineEdit::textEdited, this, [this]{
         searchForText(searchTextLineEdit->text());
     });
 }
 
-void searchAndReplaceObject::onReplaceClicked() {
+void SearchAndReplace::onReplaceClicked() {
     QString replaceText = replaceTextLineEdit->text();
     if (replaceText.isEmpty() || foundOccurrences.isEmpty()) {
         return;  // If the replacement text is empty or no occurrences found, do nothing.
@@ -185,7 +180,7 @@ void searchAndReplaceObject::onReplaceClicked() {
 }
 
 
-void searchAndReplaceObject::searchForText(const QString& text){
+void SearchAndReplace::searchForText(const QString& text){
 
     removeHighlights(); // removes any text that was previously highlighted
     foundOccurrences.clear(); // clears the vector storing all instances
@@ -215,7 +210,7 @@ void searchAndReplaceObject::searchForText(const QString& text){
         highlightCursor = document->find(text, highlightCursor, flag);
 
         if (!highlightCursor.isNull()){
-                // highlightCursor.movePosition(QTextCursor::WordRight, QTextCursor::KeepAnchor);
+            // highlightCursor.movePosition(QTextCursor::WordRight, QTextCursor::KeepAnchor);
             highlightCursor.mergeCharFormat(colorFormat);
 
             foundOccurrences.append(highlightCursor);
@@ -234,7 +229,7 @@ void searchAndReplaceObject::searchForText(const QString& text){
     editor->setTextCursor(textcursor);
 };
 
-void searchAndReplaceObject::removeHighlights(){
+void SearchAndReplace::removeHighlights(){
     QTextDocument *document = editor->document();
     QTextCursor cursor(document);
     cursor.beginEditBlock();
@@ -247,12 +242,12 @@ void searchAndReplaceObject::removeHighlights(){
     cursor.endEditBlock();
 }
 
-void searchAndReplaceObject::showWidget(){
+void SearchAndReplace::showWidget(){
     this->showNormal();
     searchTextLineEdit->setFocus();
 }
 
-void searchAndReplaceObject::goToPreviousSelection() {
+void SearchAndReplace::goToPreviousSelection() {
     // same as go to next
     QTextCursor cursor = foundOccurrences.at(selectedOccurenceIndex-1);
     QTextCharFormat oldCursorPosFormat;
@@ -274,7 +269,7 @@ void searchAndReplaceObject::goToPreviousSelection() {
     editor->setTextCursor(currentCursor);
 }
 
-void searchAndReplaceObject::goToNextSelection() {
+void SearchAndReplace::goToNextSelection() {
 
     // resets the color of the previously selected word back to blue
     QTextCursor cursor = foundOccurrences.at(selectedOccurenceIndex-1);
@@ -299,7 +294,7 @@ void searchAndReplaceObject::goToNextSelection() {
     editor->setTextCursor(currentCursor);
 }
 
-void searchAndReplaceObject::closeEvent(QCloseEvent *event)
+void SearchAndReplace::closeEvent(QCloseEvent *event)
 {
     removeHighlights(); // closed highlights then calls on the default close event
     QDockWidget::closeEvent(event);

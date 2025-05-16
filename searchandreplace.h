@@ -1,5 +1,19 @@
-#ifndef SEARCHANDREPLACEOBJECT_H
-#define SEARCHANDREPLACEOBJECT_H
+// #ifndef SEARCHANDREPLACE_H
+// #define SEARCHANDREPLACE_H
+
+// #include <QDockWidget>
+
+// class SearchAndReplace : public QDockWidget
+// {
+// public:
+//     SearchAndReplace();
+// };
+
+// #endif // SEARCHANDREPLACE_H
+
+
+#ifndef SEARCHANDREPLACE_H
+#define SEARCHANDREPLACE_H
 
 #include <QMainWindow>
 #include <QObject>
@@ -11,19 +25,16 @@
 #include <QLabel>
 #include <QCheckBox>
 #include <QFrame>
-// #include <QBoxLayout>
 
 
-class searchAndReplaceObject : public QDockWidget
+class SearchAndReplace : public QDockWidget
 {
-    Q_OBJECT
+    // Q_OBJECT // this line was not included when i made a new class with the qt dialog, will omit for now
 
 
 public:
-    // explicit searchAndReplaceObject(QWidget *parent = nullptr);
-    // explicit searchAndReplaceObject(Ui::MainWindow *ui = nullptr);
-    searchAndReplaceObject(QPlainTextEdit* editor, QWidget* parent);
-    ~searchAndReplaceObject();
+    explicit SearchAndReplace(QPlainTextEdit* editor);
+    ~SearchAndReplace();
 
 signals:
 
@@ -58,12 +69,8 @@ private:
     QPushButton* nextMatchButton;
     QPushButton* prevMatchButton;
     QLabel* occurenceIteratorLabel;
-
     int selectedOccurenceIndex;
-    // QWidget* searchAndReplaceContainer;
-    // QHBoxLayout fullLayoutParent;
-
 
 };
 
-#endif // SEARCHANDREPLACEOBJECT_H
+#endif // SEARCHANDREPLACE_H

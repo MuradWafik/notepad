@@ -34,14 +34,18 @@ private:
 
     static void highlightType(const QSet<match>& toHighlight,const QColor& color, QPlainTextEdit* pte);
 
+    /* p
+     * Since Regex system does not support variable length lookbehind, can not do checks for whether a '#' is actually within a string
+     * or a '"' is within a comment, to solve this, a function is used to extract
+     */
+    static void extractStringsAndComments(QTextDocument* doc, const QString& line, int lineOffset);
 
 
 private:
-
-    const inline static QRegularExpression stringRegex{R"("""(?:.|\n)*?"""|\'\'\'(?:.|\n)*?\'\'\'|\"(?:\\.|[^\"\\])*\"|\'(?:\\.|[^\\"\\])*\')"};
+    // const inline static QRegularExpression stringRegex{R"("""(?:.|\n)*?"""|\'\'\'(?:.|\n)*?\'\'\'|\"(?:\\.|[^\"\\])*\"|\'(?:\\.|[^\\"\\])*\')"};
     inline static QSet<match> strings{};
 
-    const inline static QRegularExpression commentRegex{R"(\#.*)"};
+    // const inline static QRegularExpression commentRegex{R"(\#.*)"};
     inline static QSet<match> comments{};
 
     const inline static QRegularExpression keywordsRegex{R"(\b(def|class|if|else|elif|return|import|from|while|for|in|try|except|with|as|pass|yield|async|await|None|True|False)\b)"};

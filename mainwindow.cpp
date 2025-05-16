@@ -1,14 +1,14 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
-#include "syntaxhighlighter.h"
+// #include "syntaxhighlighter.h"
 
 
 MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent)
-    , ui(new Ui::MainWindow)
-    , process (new QProcess(this))
-    , fileModel(new QFileSystemModel(this))
-
+    : QMainWindow(parent),
+    ui(new Ui::MainWindow),
+    process (new QProcess(this)),
+    fileModel(new QFileSystemModel(this)),
+    startTerminalCommand(getShellCommand())
 {
     ui->setupUi(this);
 
@@ -22,10 +22,9 @@ MainWindow::MainWindow(QWidget *parent)
     createSearchAndReplaceWidgets();
 
     ui->plainTextEdit->installEventFilter(this);
-    startTerminalCommand = getShellCommand(); // differentiates the terminial start based on the operating system
 
-    searchReplaceWidget = new searchAndReplaceObject(this->ui->plainTextEdit, this->ui->plainTextEdit);
-    // references the plaintextedit as the parent and the editor used
+
+    searchReplaceWidget = new SearchAndReplace(this->ui->plainTextEdit);
     connectSignals();
 }
 
@@ -36,6 +35,7 @@ MainWindow::~MainWindow()
         process->waitForFinished();
     }
 
+    delete searchReplaceWidget;
     delete process;
     delete ui;
 }
@@ -43,8 +43,8 @@ MainWindow::~MainWindow()
 void MainWindow::createLineNumbersOnFileOpen(const int lineNumbers){
     this->ui->stackedWidget->setCurrentWidget(this->ui->page_2); // sets the page to the text editor page
 
-    this->ui->dockWidget_4->showNormal();
-    this->ui->dockWidget_2->showNormal(); // shows both docks, file explorer, and output
+    this->ui->fileTreeDockWidget->showNormal();
+    this->ui->terminalDockWidget->showNormal(); // shows both docks, file explorer, and output
 
     this->ui->lineNumPlainTextEdit->clear(); // clears the text in case user opens another file
 
@@ -57,12 +57,13 @@ void MainWindow::createLineNumbersOnFileOpen(const int lineNumbers){
     }
 }
 
-void MainWindow::on_actionOpen_File_triggered()
+void MainWindow::openFileAction()
 {
     // asks to save if they have any changes on current file they are working on before opening dialog
     if(!ui->plainTextEdit->toPlainText().isEmpty() && this->ui->plainTextEdit->document()->isModified() && !currentFile.isEmpty()){
-        QMessageBox::StandardButton saveFileQuestion = QMessageBox::question(this, "Save Changes?", "Would you like To Save Changes Before Opening a New Folder?"
-                                                                             , QMessageBox::Save | QMessageBox::Discard, QMessageBox::Save);
+        QMessageBox::StandardButton saveFileQuestion = QMessageBox::question(this, tr("Save Changes?"),
+                                                                             tr("Would you like To Save Changes Before Opening a New Folder?"),
+                                                                             QMessageBox::Save | QMessageBox::Discard, QMessageBox::Save);
 
         if(saveFileQuestion == QMessageBox::Save){
             saveFile();
@@ -78,16 +79,16 @@ void MainWindow::on_actionOpen_File_triggered()
 }
 
 
-void MainWindow::on_actionSave_As_triggered()
+void MainWindow::saveAs()
 {
-    QString fileName = QFileDialog::getSaveFileName(this, "Save As");
+    QString fileName = QFileDialog::getSaveFileName(this, tr("Save As"));
     if (fileName.isEmpty()) {
         return;  // If the user cancels the save dialog, do nothing.
     }
 
     QFile file(fileName);
     if (!file.open(QFile::WriteOnly | QFile::Text)) {
-        QMessageBox::warning(this, "Warning", "Can Not Save File: " + file.errorString());
+        QMessageBox::warning(this, tr("Warning"), "Can Not Save File: " + file.errorString());
         return;
     }
 
@@ -105,14 +106,8 @@ void MainWindow::on_actionSave_As_triggered()
     updateWindowTitle();
 }
 
-void MainWindow::on_actionSave_triggered()
-{
-    saveFile();
-}
 
-
-
-void MainWindow::on_plainTextEdit_cursorPositionChanged()
+void MainWindow::updateStatusBarCursorPosition()
 { // possibly later a tracker for current line num and column
 
     auto cursor = this->ui->plainTextEdit->textCursor();
@@ -124,7 +119,7 @@ void MainWindow::on_plainTextEdit_cursorPositionChanged()
     lineAndColStatusLabel->setText(text);
 }
 
-void MainWindow::on_plainTextEdit_blockCountChanged(int newBlockCount)
+void MainWindow::calculateNumberOfLines(int newBlockCount)
 {
     if(previousNumberOfLines == 0) {
         return; // so it doesn't append on startup just a singular line with the full amount
@@ -177,7 +172,7 @@ void MainWindow::initTerminalBox(){
     process->start(startTerminalCommand);
 
     if (!process->waitForStarted()) {
-        QMessageBox::critical(this, "Error", "Failed to start the command process.");
+        QMessageBox::critical(this, tr("Error"), tr("Failed to start the command process"));
         return;
     }
     process->setWorkingDirectory(QFileInfo(currentFile).absolutePath());
@@ -207,7 +202,7 @@ void MainWindow::on_StderrAvailable(){
 }
 
 
-void MainWindow::on_inputTerminalCommand_returnPressed()
+void MainWindow::writeToTerminal()
 {
     if (process->isOpen()){
         QByteArray inputByteArray(ui->inputTerminalCommand->text().toUtf8() + "\n") ;
@@ -223,8 +218,8 @@ void MainWindow::setUIChanges(){
     ui->lineNumPlainTextEdit->setStyleSheet("QPlainTextEdit {background-color: black;}");
     ui->lineNumPlainTextEdit->verticalScrollBar()->hide();
 
-    this->ui->dockWidget_2->hide();
-    this->ui->dockWidget_4->hide();
+    this->ui->terminalDockWidget->hide();
+    this->ui->fileTreeDockWidget->hide();
 
     setCorner(Qt::BottomLeftCorner, Qt::LeftDockWidgetArea);
     setCorner(Qt::BottomRightCorner, Qt::RightDockWidgetArea); // makes the file explorer, whether right or left fill the space instead of the terminal
@@ -240,28 +235,16 @@ void MainWindow::setUIChanges(){
     ui->plainTextEdit->setTabStopDistance(4 * spaceWidth);
 }
 
-void MainWindow::on_pushButton_clicked()
+void MainWindow::runButton()
 {
     if(process->isOpen()){
-        on_actionShow_Terminal_triggered();
+        showTerminal();
         runPythonCommand = QString("python -u \"%1\"").arg(currentFile);
         QByteArray runFileCommand(runPythonCommand.toUtf8() + "\n") ;
 
         process->write(runFileCommand.data()); // inputs the user command into the terminal
         process->waitForBytesWritten();
     }
-}
-
-
-void MainWindow::on_actionShow_Terminal_triggered()
-{
-    this->ui->dockWidget_2->showNormal(); // if they press new terminal, it shows the widget it
-}
-
-
-void MainWindow::on_actionHide_Terminal_triggered()
-{
-    this->ui->dockWidget_2->hide();
 }
 
 void MainWindow::getAllFilesInDirectory(){
@@ -295,29 +278,12 @@ void MainWindow::getAllFilesInDirectory(QString &directory){
 }
 
 
-void MainWindow::on_fileListTree_doubleClicked(const QModelIndex &index)
-{
-    QString fileToOpenPath = fileModel->filePath(index);
-
-    // the current text on the document was altered and not saved
-    if(this->ui->plainTextEdit->document()->isModified()){
-        QMessageBox::StandardButton saveFileQuestion = QMessageBox::question(this, "Save Before Swap",
-                                                                             "Would You Like To Save the Previous File Before Switching?",
-                                                                             QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
-        // the default answer is yes, so if they close or somehow dont answer it is a yes
-
-        if(saveFileQuestion == QMessageBox::Yes){
-            saveFile();
-            // saving file crashes for some reason unless it also opens it again afterwards
-        }
-    }
-    openFile(fileToOpenPath);
-}
 
 void MainWindow::openFile(const QString &filePath){
     QFile file(filePath);
     if(!file.open(QIODevice::ReadOnly | QFile::Text)){
-        QMessageBox::warning(this, "Warning", "Can Not Open File " + file.errorString());
+        QString errorMessage{"Can Not Open File " + file.errorString()};
+        QMessageBox::warning(this, tr("Warning"), tr(errorMessage.toStdString().c_str()));
         return;
     }
 
@@ -342,7 +308,7 @@ void MainWindow::openFile(const QString &filePath){
 
 
     // SyntaxHighlighter::searchTextForMatches(text);
-    SyntaxHighlighter::highlightText(text, this->ui->plainTextEdit);
+    // SyntaxHighlighter::highlightText(text, this->ui->plainTextEdit);
 }
 
 void MainWindow::updateTerminalAndOutput(){
@@ -369,12 +335,12 @@ void MainWindow::adjustSearchLineEditPosition()
 void MainWindow::resizeEvent(QResizeEvent *event)
 {
     adjustSearchLineEditPosition();
-    QMainWindow::resizeEvent(event);   
+    QMainWindow::resizeEvent(event);
 }
 
 void MainWindow::saveFile(){
     if(currentFile.isEmpty()) {
-        on_actionSave_As_triggered();  // on cases where option is available with no file, calls to save as
+        saveAs();  // on cases where option is available with no file, calls to save as
         return;
     }
 
@@ -382,8 +348,9 @@ void MainWindow::saveFile(){
 
         QFile file(currentFile);
         if(!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-            QMessageBox::warning(this, "Warning", "Unable to Save File " + file.errorString());
-            throw std::runtime_error("Cannot open file for writing: " + file.errorString().toStdString());
+            QString errorMessage{QString("Unable to Save File ") + file.errorString()};
+            QMessageBox::warning(this, tr("Warning"), tr(errorMessage.toStdString().c_str()));
+            // throw std::runtime_error("Cannot open file for writing: " + file.errorString().toStdString());
             return;
         }
         QString text = this->ui->plainTextEdit->toPlainText();
@@ -415,56 +382,49 @@ void MainWindow::createSearchAndReplaceWidgets(){
 }
 
 
-void MainWindow::on_actionFind_Replace_triggered()
-{
-    if(currentFile.isEmpty()) return;
-    searchReplaceWidget->showWidget();
-    adjustSearchLineEditPosition(); // so it is in the correct position based on the window size
-}
 
-void MainWindow::on_actionOpen_Folder_triggered()
+void MainWindow::openFolderDialog()
 {
     // if they try to open folder while working on something that is not saved, it asks to save beforehand
     if(!ui->plainTextEdit->toPlainText().isEmpty() && this->ui->plainTextEdit->document()->isModified()){
-        QMessageBox::StandardButton saveFileQuestion = QMessageBox::question(this, "Save Changes?", "Would you like To Save Changes Before Opening a New Folder?"
-                                 , QMessageBox::Save | QMessageBox::Discard, QMessageBox::Save);
+        QMessageBox::StandardButton saveFileQuestion = QMessageBox::question(this, tr("Save Changes?"), tr("Would you like To Save Changes Before Opening a New Folder?")
+                                                                             , QMessageBox::Save | QMessageBox::Discard, QMessageBox::Save);
 
         if(saveFileQuestion == QMessageBox::Save) saveFile();
     }
 
-    QString dir = QFileDialog::getExistingDirectory(this, "Open Directory",
-                                                    "/home",
+    QString dir = QFileDialog::getExistingDirectory(this, tr("Open Directory"),
+                                                    tr("/home"),
                                                     QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
     if(dir.isEmpty()){
-        QMessageBox::warning(this, "Warning", tr("Unable To Open Folder"));
+        QMessageBox::warning(this, tr("Warning"), tr("Unable To Open Folder"));
         return;
     }
 
     this->ui->stackedWidget->setCurrentWidget(this->ui->page_2); // sets the page to the text editor page
-    this->ui->dockWidget_4->showNormal();
+    this->ui->fileTreeDockWidget->showNormal();
     updateTerminalAndOutput();
 
     getAllFilesInDirectory(dir);
     setWindowTitle(dir);
 }
 
-
-void MainWindow::on_actionUndo_triggered()
-{
-    if(currentFile.isEmpty()) return;
-    QWidget* focusedWidget = QApplication::focusWidget();
-    if (auto plainTextEdit = qobject_cast<QPlainTextEdit*>(focusedWidget)) {
-        plainTextEdit->undo();
+void MainWindow::openFileWhileEditing(const QString& path){
+    // checks to see if there are changes with the file before opening
+    if(this->ui->plainTextEdit->document()->isModified()){
+        QMessageBox::StandardButton saveQuestion = QMessageBox::question(this, tr("Save?"),
+                                                                         tr("Would you like to save changes before switching"),
+                                                                         QMessageBox::Save | QMessageBox::Discard, QMessageBox::Save);
+        if(saveQuestion == QMessageBox::Save) saveFile();
     }
-    else if (auto lineEdit = qobject_cast<QLineEdit*>(focusedWidget)) {
-        lineEdit->undo();
-    } // tries to cast the focused widget into one of these, if possible calls on the built in undo function
+    openFile(path);
 }
 
 void MainWindow::updateWindowTitle(){
     // textIsSameAfterSave = fileContentAfterSave == this->ui->plainTextEdit->toPlainText();
     if(this->ui->plainTextEdit->document()->isModified()){
-        setWindowTitle(currentFile + " (Changes Not Saved)");
+        QString unsavedWindowTitle{currentFile + " (Changes Not Saved)"};
+        setWindowTitle(tr(unsavedWindowTitle.toStdString().c_str()));
     }
     else if(!this->ui->plainTextEdit->document()->isModified() && windowTitle() != currentFile){
         setWindowTitle(currentFile);
@@ -488,52 +448,6 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
 }
 
 
-QString MainWindow::getShellCommand() {
-#ifdef _WIN32 // maybe change to user choice, maybe could use powershell
-    return "cmd.exe";
-#else
-    return "/bin/sh";
-#endif
-}
-
-void MainWindow::on_actionShow_File_P_triggered()
-{
-    this->ui->dockWidget_4->showNormal();
-}
-
-
-void MainWindow::on_actionClear_Terminal_triggered()
-{
-    this->ui->terminalBox->clear();
-}
-
-
-void MainWindow::on_actionRedo_triggered()
-{
-    QWidget* focusedWidget = QApplication::focusWidget();
-
-    if (auto plainTextEdit = qobject_cast<QPlainTextEdit*>(focusedWidget)) {
-        plainTextEdit->redo();
-    }
-    else if (auto lineEdit = qobject_cast<QLineEdit*>(focusedWidget)) {
-        lineEdit->redo();
-
-    } //  just like undo
-    //tries to cast the focused widget into one of these, if possible calls on the built in redo function
-}
-
-
-void MainWindow::on_actionSelect_All_triggered()
-{
-    QWidget* focusedWidget = QApplication::focusWidget();
-
-    if (auto plainTextEdit = qobject_cast<QPlainTextEdit*>(focusedWidget)) {
-        plainTextEdit->selectAll();
-    } else if (auto lineEdit = qobject_cast<QLineEdit*>(focusedWidget)) {
-        lineEdit->selectAll();
-    } // tries to cast the focused widget into one of these, if possible calls on the built in select ll function
-}
-
 void MainWindow::showCustomContextMenu(const QPoint &pos){
     QModelIndex index = this->ui->fileListTree->indexAt(pos);
     QString fileToOpenPath = fileModel->filePath(index);
@@ -541,13 +455,13 @@ void MainWindow::showCustomContextMenu(const QPoint &pos){
     QMenu contextMenu(tr("Context menu"), this);
 
 
-    QAction newPythonAction("New Python File", this);
+    QAction newPythonAction(tr("New Python File"), this);
     connect(&newPythonAction, &QAction::triggered, this,[this, pos]{
         createPythonFile(pos);
     });
     contextMenu.addAction(&newPythonAction);
 
-    QAction newTextFileAction("New Text File", this);
+    QAction newTextFileAction(tr("New Text File"), this);
     connect(&newTextFileAction, &QAction::triggered, this,[this, pos]{
         createTextFile(pos);
     });
@@ -558,14 +472,14 @@ void MainWindow::showCustomContextMenu(const QPoint &pos){
     QAction deleteAction("Delete", this);
     connect(&deleteAction, &QAction::triggered, this, [this, &fileToOpenPath]() {
         if(fileToOpenPath == currentFile){
-            QMessageBox::warning(this, "Error", "Can not delete file that is currently open");
+            QMessageBox::warning(this, tr("Error"), tr("Can not delete file that is currently open"));
             return;
         }
         QFile::remove(fileToOpenPath);
     });
 
     QAction openAction("Open", this);
-    connect(&openAction, &QAction::triggered, this, [this, &fileToOpenPath]() { openFileAction(fileToOpenPath); });
+    connect(&openAction, &QAction::triggered, this, [this, &fileToOpenPath]() { openFileWhileEditing(fileToOpenPath); });
     qDebug() << index.isValid();
 
     if (index.isValid()){ // if they clicked on a part that has a file
@@ -576,23 +490,10 @@ void MainWindow::showCustomContextMenu(const QPoint &pos){
     }
 
 
-
-
-
     contextMenu.exec(this->ui->fileListTree->viewport()->mapToGlobal(pos));
 
 }
 
-void MainWindow::openFileAction(QString &filePath){
-    // checks to see if there are changes with the file before opening
-    if(this->ui->plainTextEdit->document()->isModified()){
-        QMessageBox::StandardButton saveQuestion = QMessageBox::question(this, "Save?",
-                                                                         "Would you like to save changes before switching",
-                                                                         QMessageBox::Save | QMessageBox::Discard, QMessageBox::Save);
-        if(saveQuestion == QMessageBox::Save) saveFile();
-    }
-    openFile(filePath);
-}
 
 void MainWindow::createPythonFile(const QPoint &clickPoint) {
 
@@ -623,7 +524,8 @@ void MainWindow::createPythonFile(const QPoint &clickPoint) {
         QDir filePath = QFileInfo(currentFile).dir();
         QFile file(filePath.absolutePath() + "/" + fileName);
         if (!file.open(QIODevice::WriteOnly)) {
-            QMessageBox::warning(this, "Error", "Unable to open file " + file.errorString());
+            QString error{QString( "Unable to open file ") + file.errorString()};
+            QMessageBox::warning(this, tr("Error"), error.toStdString().c_str());
             // delete lineedit and return if error opening file
             delete fileNameLine;
             return;
@@ -639,7 +541,6 @@ void MainWindow::createPythonFile(const QPoint &clickPoint) {
 }
 
 void MainWindow::createTextFile(const QPoint &clickPoint) {
-
     QPoint globalPos = this->ui->fileListTree->viewport()->mapToGlobal(clickPoint);
 
     // finds the click point to place it at the same position of the click, while only being parented to the main window
@@ -666,7 +567,9 @@ void MainWindow::createTextFile(const QPoint &clickPoint) {
         QDir filePath = QFileInfo(currentFile).dir();
         QFile file(filePath.absolutePath() + "/" + fileName);
         if (!file.open(QIODevice::WriteOnly)) {
-            QMessageBox::warning(this, "Error", "Unable to open file " + file.errorString());
+
+            QString error{QString("Unable to open file ") + file.errorString()};
+            QMessageBox::warning(this, tr("Error"), error.toStdString().c_str());
             // delete lineedit and return if error opening file
             delete fileNameLine;
             return;
@@ -682,13 +585,13 @@ void MainWindow::createTextFile(const QPoint &clickPoint) {
 }
 
 
-void MainWindow::on_actionNew_triggered()
+void MainWindow::newPythonFile()
 {
     // QString fileName = QFileDialog::
     QString fileName = QFileDialog::getSaveFileName(this,
-                                                    "Create New Python File",
+                                                    tr("Create New Python File"),
                                                     QDir::homePath(),  // Default directory
-                                                    "Python Files (*.py);;All Files (*)");
+                                                    tr("Python Files (*.py);;All Files (*)"));
 
     // do nothing if they cancel, maybe show message warning later on
     if (fileName.isEmpty()) {
@@ -702,10 +605,11 @@ void MainWindow::on_actionNew_triggered()
 
     QFile file(fileName);
     if (!file.open(QIODevice::WriteOnly)) {
-        QMessageBox::warning(this, "Error", "Failed to create the file: " + file.errorString());
+        QString error{"Failed to create the file: " + file.errorString()};
+        QMessageBox::warning(this, tr("Error"), error.toStdString().c_str());
         return;
     }
-    // QMessageBox::information(this, "File Created"), "Python file created successfully.");
+
     file.close();
 
     openFile(fileName);
@@ -713,7 +617,7 @@ void MainWindow::on_actionNew_triggered()
     adjustSearchLineEditPosition();
 }
 
-void MainWindow::connectSignals(){
+void MainWindow::connectSignals(){ // relying on the connection of slots that the qt generated on_foo_bar as clangd would say
     connect(ui->lineNumPlainTextEdit->verticalScrollBar(), &QScrollBar::valueChanged, this, &MainWindow::synchronizeScrollbars);
     connect(ui->plainTextEdit->verticalScrollBar(), &QScrollBar::valueChanged, this, &MainWindow::synchronizeScrollbars);
     // connects the scroll bars of the text box the user types in with the line number text
@@ -722,17 +626,98 @@ void MainWindow::connectSignals(){
         this->ui->plainTextEdit->document()->setModified(true);
         updateWindowTitle();
     });
-    connect(this->ui->fileListTree, &QWidget::customContextMenuRequested, this, &MainWindow::showCustomContextMenu);
 
+    connect(this->ui->plainTextEdit, &QPlainTextEdit::blockCountChanged, this, &MainWindow::calculateNumberOfLines);
+    connect(this->ui->plainTextEdit, &QPlainTextEdit::cursorPositionChanged, this, &MainWindow::updateStatusBarCursorPosition);
+
+
+    connect(this->ui->fileListTree, &QWidget::customContextMenuRequested, this, &MainWindow::showCustomContextMenu);
+    connect(this->ui->fileListTree, &QTreeView::doubleClicked, this, [this](QModelIndex index){ // pass the same argument as the doubleClick slot has
+        QString fileToOpenPath = fileModel->filePath(index);
+        openFileWhileEditing(fileToOpenPath);
+    });
+
+
+    // MENU ACTION BAR BUTTONS
+    connect(this->ui->actionShow_Terminal, &QAction::triggered, this, &MainWindow::showTerminal);
+    connect(this->ui->actionNew_Text_File, &QAction::triggered, this, &MainWindow::newTextFile);
+    connect(this->ui->actionNew, &QAction::triggered, this, &MainWindow::newPythonFile);
+
+    connect(this->ui->actionOpen_File, &QAction::triggered, this, &MainWindow::openFileAction);
+    connect(this->ui->actionOpen_Folder, &QAction::triggered, this, &MainWindow::openFolderDialog);
+
+    connect(this->ui->actionSelect_All, &QAction::triggered, this, []{
+        // While the check of current file might be useful like in undo, AFAIK, no harm in allowing this (in any case where text may exist out of file)
+        // because of this doesnt need "this" in the capture
+        QWidget* focusedWidget = QApplication::focusWidget();
+        if (auto plainTextEdit = qobject_cast<QPlainTextEdit*>(focusedWidget)) {
+            plainTextEdit->selectAll();
+        }
+        else if (auto lineEdit = qobject_cast<QLineEdit*>(focusedWidget)) {
+            lineEdit->selectAll();
+        } // tries to cast the focused widget into one of these, if possible calls on the built in select all function
+
+    });
+    connect(this->ui->actionUndo, &QAction::triggered, this, [this]{
+        if(currentFile.isEmpty()) return;
+        QWidget* focusedWidget = QApplication::focusWidget();
+        if (auto plainTextEdit = qobject_cast<QPlainTextEdit*>(focusedWidget)) {
+            plainTextEdit->undo();
+        }
+        else if (auto lineEdit = qobject_cast<QLineEdit*>(focusedWidget)) {
+            lineEdit->undo();
+        } // tries to cast the focused widget into one of these, if possible calls on the built in undo function
+    });
+    connect(this->ui->actionRedo, &QAction::triggered, this, [this]{
+        if(currentFile.isEmpty()) return;
+        QWidget* focusedWidget = QApplication::focusWidget();
+
+        if (auto plainTextEdit = qobject_cast<QPlainTextEdit*>(focusedWidget)) {
+            plainTextEdit->redo();
+        }
+        else if (auto lineEdit = qobject_cast<QLineEdit*>(focusedWidget)) {
+            lineEdit->redo();
+
+        } //  just like undo
+        //tries to cast the focused widget into one of these, if possible calls on the built in redo function
+    });
+
+
+    connect(this->ui->actionSave, &QAction::triggered, this, &MainWindow::saveFile);
+
+
+    connect(this->ui->actionHide_Terminal, &QAction::triggered, this, [this]{
+        this->ui->terminalDockWidget->hide();
+    });
+    connect(this->ui->actionClear_Terminal, &QAction::triggered, this, [this]{
+        this->ui->terminalBox->clear();
+    });
+
+    connect(this->ui->actionShow_File_Tree, &QAction::triggered, this, [this]{
+        this->ui->fileTreeDockWidget->showNormal();
+    });
+    connect(this->ui->actionFind_Replace, &QAction::triggered, this, [this]{
+        if(currentFile.isEmpty()) return;
+        searchReplaceWidget->showWidget();
+        // searchReplaceWidget.showWidget();
+
+        adjustSearchLineEditPosition(); // so it is in the correct position based on the window size
+    });
+
+    // END OF MENU BAR ACTIONS
+
+
+    connect(this->ui->runFileButton, &QPushButton::pressed, this, &MainWindow::runButton);
+    connect(this->ui->inputTerminalCommand, &QLineEdit::returnPressed, this, &MainWindow::writeToTerminal);
 }
 
 
-void MainWindow::on_actionNew_Text_File_triggered()
+void MainWindow::newTextFile()
 {
     QString fileName = QFileDialog::getSaveFileName(this,
-                                                    "Create New Text File File",
+                                                    tr("Create New Text File File"),
                                                     QDir::homePath(),  // Default directory
-                                                    "Text Files (*.txt);;All Files (*)");
+                                                    tr("Text Files (*.txt);;All Files (*)"));
 
     // do nothing if they cancel, maybe show message warning later on
     if (fileName.isEmpty()) {
@@ -746,7 +731,9 @@ void MainWindow::on_actionNew_Text_File_triggered()
 
     QFile file(fileName);
     if (!file.open(QIODevice::WriteOnly)) {
-        QMessageBox::warning(this, "Error", "Failed to create the file: " + file.errorString());
+
+        QString error{"Failed to create the file: "+ file.errorString()};
+        QMessageBox::warning(this, tr("Error"), tr(error.toStdString().c_str()));
         return;
     }
 
@@ -773,8 +760,8 @@ void MainWindow::commentLines(){
         bool everyLineStartsWithComment = true; // assumes every line is a comment, then loops to check, if one doesnt, it breaks
         for(QString &line : textSplit){
             if(!line.startsWith("#")){
-            everyLineStartsWithComment = false;
-            break;
+                everyLineStartsWithComment = false;
+                break;
             }
         }
         if(everyLineStartsWithComment) removeComments();
@@ -785,7 +772,8 @@ void MainWindow::commentLines(){
     QString currentLine = textCursor.block().text();
     if (currentLine.startsWith("#")) {
         removeComments();
-    } else {
+    }
+    else {
         addComments();
     }
 
@@ -820,13 +808,13 @@ void MainWindow::addComments() {
         textCursor.setPosition(start);
         textCursor.setPosition(start + commentedText.length(), QTextCursor::KeepAnchor);
         this->ui->plainTextEdit->setTextCursor(textCursor);
-        }
+    }
 
     else{
-            // textCursor.insertText("#");
-            textCursor.movePosition(QTextCursor::StartOfLine);
-            textCursor.insertText("#");
-        }
+        // textCursor.insertText("#");
+        textCursor.movePosition(QTextCursor::StartOfLine);
+        textCursor.insertText("#");
+    }
 }
 
 
@@ -853,9 +841,13 @@ void MainWindow::removeComments(){
     else {
         textCursor.movePosition(QTextCursor::StartOfLine);
         QString currentLine = textCursor.block().text();
-        // qDebug() << currentLine;
+
         if (currentLine.startsWith("#")) {
             textCursor.deleteChar();
         }
     }
+}
+
+void MainWindow::showTerminal(){
+    this->ui->terminalDockWidget->showNormal(); // if they press new terminal, it shows the widget
 }

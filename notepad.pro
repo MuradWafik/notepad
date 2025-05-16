@@ -12,13 +12,13 @@ SOURCES += \
     main.cpp \
     mainwindow.cpp \
     pythoninstaller.cpp \
-    searchandreplaceobject.cpp \
+    searchandreplace.cpp \
     syntaxhighlighter.cpp
 
 HEADERS += \
     mainwindow.h \
     pythoninstaller.h \
-    searchandreplaceobject.h \
+    searchandreplace.h \
     syntaxhighlighter.h
 
 FORMS += \

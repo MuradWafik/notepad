@@ -3,7 +3,7 @@
 
 #include <QMainWindow>
 
-#include <QFile> // open files
+#include <QFile>
 #include <QFileDialog>
 #include <QTextStream>
 #include <QMessageBox>
@@ -16,8 +16,8 @@
 #include <QFileSystemModel>
 #include <QCheckBox>
 #include <QVector>
-#include "searchandreplaceobject.h"
 #include <QTextDocumentFragment>
+#include "searchandreplace.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -33,33 +33,48 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
-private slots:
-    void on_actionOpen_File_triggered();
-
-    void on_actionSave_As_triggered();
-
-    void on_actionSave_triggered();
-    void on_plainTextEdit_cursorPositionChanged();
-    void on_plainTextEdit_blockCountChanged(int newBlockCount);
-
-    void createLineNumbersOnFileOpen(const int lineNumbers);
-
-    void synchronizeScrollbars();
-
-    void initTerminalBox();
-    void on_StdoutAvailable();
-    void on_StderrAvailable(); // errors from the terminal
-    void on_inputTerminalCommand_returnPressed();
-    void setUIChanges();
-    void on_pushButton_clicked();
-    void on_actionShow_Terminal_triggered();
-
-    void on_actionHide_Terminal_triggered();
+private:
+    inline static QString getShellCommand(){ // differentiates the terminial start based on the operating system
+#ifdef _WIN32 // maybe change to user choice, maybe could use powershell
+        return "cmd.exe";
+#else
+        return "/bin/sh";
+#endif
+    }
 
     void getAllFilesInDirectory();
     void getAllFilesInDirectory(QString &directory);
+    void createLineNumbersOnFileOpen(int lineNumbers);
+    void setUIChanges();
 
-    void on_fileListTree_doubleClicked(const QModelIndex &index);
+    void commentLines();
+    void addComments();
+    void removeComments();
+
+    void initTerminalBox();
+    void connectSignals();
+
+
+private slots:
+    void openFileAction();
+    void saveAs();
+
+    void updateStatusBarCursorPosition(); // update the text of Line Number and Coloumn number on the bottom status bar
+
+    void calculateNumberOfLines(int newBlockCount); // technically name isnt the best, it also changes the numberings on the line number tab
+
+
+    void synchronizeScrollbars(); // match the scroll bar value between the main text aream and the line numbers
+
+    void on_StdoutAvailable(); // terminal output
+    void on_StderrAvailable(); // errors from the terminal
+
+    void writeToTerminal(); // pressing return in the line edit..
+
+    void runButton();
+    void showTerminal();
+
+    void openFileWhileEditing(const QString& filePath);
 
     void openFile(const QString &filePath);
 
@@ -70,29 +85,17 @@ private slots:
     void saveFile();
     void createSearchAndReplaceWidgets();
 
-    void on_actionFind_Replace_triggered();
-    void on_actionOpen_Folder_triggered();
-    void on_actionUndo_triggered();
+    void openFolderDialog();
     void updateWindowTitle();
 
-    QString getShellCommand();
-    void on_actionShow_File_P_triggered();
-    void on_actionClear_Terminal_triggered();
-    void on_actionRedo_triggered();
-    void on_actionSelect_All_triggered();
     void showCustomContextMenu(const QPoint &pos);
-    void openFileAction(QString &filePath);
+
     void createPythonFile(const QPoint &clickPoint);
     void createTextFile(const QPoint &clickPoint);
 
-    void on_actionNew_triggered();
-    void connectSignals();
+    void newPythonFile();
 
-    void on_actionNew_Text_File_triggered();
-    void commentLines();
-
-    void addComments();
-    void removeComments();
+    void newTextFile();
 
 protected:
     // void keyPressEvent(QKeyEvent *event) override;  // Declaration of keyPressEvent
@@ -113,11 +116,9 @@ private:
     QVector<QTextCursor> foundOccurrences;
     QString startTerminalCommand;
 
-    // QWidget* statusBarWidget;
-    // QHBoxLayout* statusBarLayout;
     QLabel* lineAndColStatusLabel;
     QLabel* searchAndReplaceStatusLabel;
-    searchAndReplaceObject* searchReplaceWidget;
+    SearchAndReplace* searchReplaceWidget;
     // searchAndReplaceObject obj;
 };
 #endif // MAINWINDOW_H
