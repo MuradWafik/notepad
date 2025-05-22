@@ -33,7 +33,7 @@ class SearchAndReplace : public QDockWidget
 
 
 public:
-    explicit SearchAndReplace(QPlainTextEdit* editor);
+    explicit SearchAndReplace(QPlainTextEdit* parent);
     ~SearchAndReplace();
 
 signals:

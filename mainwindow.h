@@ -18,6 +18,7 @@
 #include <QVector>
 #include <QTextDocumentFragment>
 #include "searchandreplace.h"
+#include "editor.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -34,22 +35,9 @@ public:
     ~MainWindow();
 
 private:
-    inline static QString getShellCommand(){ // differentiates the terminial start based on the operating system
-#ifdef _WIN32 // maybe change to user choice, maybe could use powershell
-        return "cmd.exe";
-#else
-        return "/bin/sh";
-#endif
-    }
-
     void getAllFilesInDirectory();
     void getAllFilesInDirectory(QString &directory);
-    void createLineNumbersOnFileOpen(int lineNumbers);
     void setUIChanges();
-
-    void commentLines();
-    void addComments();
-    void removeComments();
 
     void initTerminalBox();
     void connectSignals();
@@ -57,14 +45,8 @@ private:
 
 private slots:
     void openFileAction();
-    void saveAs();
 
     void updateStatusBarCursorPosition(); // update the text of Line Number and Coloumn number on the bottom status bar
-
-    void calculateNumberOfLines(int newBlockCount); // technically name isnt the best, it also changes the numberings on the line number tab
-
-
-    void synchronizeScrollbars(); // match the scroll bar value between the main text aream and the line numbers
 
     void on_StdoutAvailable(); // terminal output
     void on_StderrAvailable(); // errors from the terminal
@@ -82,11 +64,9 @@ private slots:
     void adjustSearchLineEditPosition();
     void resizeEvent(QResizeEvent*) override;
 
-    void saveFile();
     void createSearchAndReplaceWidgets();
 
     void openFolderDialog();
-    void updateWindowTitle();
 
     void showCustomContextMenu(const QPoint &pos);
 
@@ -103,18 +83,12 @@ protected:
 
 private:
     Ui::MainWindow *ui;
-    QString currentFile = "";
-    int previousNumberOfLines = 0;  // to see if line numbers (block count) are increased or decreased on change
     QProcess *process;
-
-    QString runPythonCommand;
-    QString fileContentAfterSave;
 
     QFileSystemModel *fileModel; // the file explorer  on the left for treeview
 
-
+    editor* openEditor = nullptr;
     QVector<QTextCursor> foundOccurrences;
-    QString startTerminalCommand;
 
     QLabel* lineAndColStatusLabel;
     QLabel* searchAndReplaceStatusLabel;

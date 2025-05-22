@@ -77,20 +77,21 @@ void SyntaxHighlighter::extractStringsAndComments(QTextDocument* doc, const QStr
         QChar c = line[i];
         if (c == '"') {
             inString = !inString;
-        } else if (c == '#' && !inString) {
+        }
+        else if (c == '#' && !inString) {
             commentStart = i;
             break;
         }
     }
 
-    // Highlight strings before the comment
+    // highlighting strings before the comment
     format.setForeground(stringColor);
     // inString = false;
     int iterations = (commentStart == -1 ? line.length() : commentStart);
     for (int i = 0; i < iterations; ++i) {
         if (line[i] == '"') {
             int start = i++;
-            while (i < iterations && line[i] != '"') ++i;
+            while (i < iterations && line[i] != '"') { ++i; }
             if (i < iterations) ++i;
 
             int globalStart = lineOffset + start;
@@ -102,7 +103,7 @@ void SyntaxHighlighter::extractStringsAndComments(QTextDocument* doc, const QStr
         }
     }
 
-    // Highlight comment
+    // highlight comment
     if (commentStart != -1) {
         format.setForeground(commentColor);
         int globalStart = lineOffset + commentStart;

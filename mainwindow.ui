@@ -58,112 +58,57 @@
          <number>0</number>
         </property>
         <item>
-         <layout class="QVBoxLayout" name="verticalLayout_3">
-          <property name="spacing">
+         <widget class="QTabWidget" name="openEditorsTabWidget">
+          <property name="font">
+           <font>
+            <family>Noto Mono</family>
+           </font>
+          </property>
+          <property name="tabPosition">
+           <enum>QTabWidget::TabPosition::North</enum>
+          </property>
+          <property name="tabShape">
+           <enum>QTabWidget::TabShape::Rounded</enum>
+          </property>
+          <property name="currentIndex">
            <number>0</number>
           </property>
-          <item>
-           <layout class="QHBoxLayout" name="horizontalLayout">
-            <property name="spacing">
-             <number>0</number>
-            </property>
-            <item alignment="Qt::AlignmentFlag::AlignRight">
-             <widget class="QPlainTextEdit" name="lineNumPlainTextEdit">
-              <property name="sizePolicy">
-               <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
-                <horstretch>0</horstretch>
-                <verstretch>0</verstretch>
-               </sizepolicy>
-              </property>
-              <property name="minimumSize">
-               <size>
-                <width>20</width>
-                <height>40</height>
-               </size>
-              </property>
-              <property name="maximumSize">
-               <size>
-                <width>50</width>
-                <height>16777215</height>
-               </size>
-              </property>
-              <property name="baseSize">
-               <size>
-                <width>0</width>
-                <height>0</height>
-               </size>
-              </property>
-              <property name="font">
-               <font>
-                <family>Courier</family>
-                <underline>true</underline>
-               </font>
-              </property>
-              <property name="focusPolicy">
-               <enum>Qt::FocusPolicy::NoFocus</enum>
-              </property>
-              <property name="contextMenuPolicy">
-               <enum>Qt::ContextMenuPolicy::NoContextMenu</enum>
-              </property>
-              <property name="inputMethodHints">
-               <set>Qt::InputMethodHint::ImhNone</set>
-              </property>
-              <property name="verticalScrollBarPolicy">
-               <enum>Qt::ScrollBarPolicy::ScrollBarAlwaysOff</enum>
-              </property>
-              <property name="horizontalScrollBarPolicy">
-               <enum>Qt::ScrollBarPolicy::ScrollBarAlwaysOff</enum>
-              </property>
-              <property name="sizeAdjustPolicy">
-               <enum>QAbstractScrollArea::SizeAdjustPolicy::AdjustToContents</enum>
-              </property>
-              <property name="readOnly">
-               <bool>true</bool>
-              </property>
-              <property name="plainText">
-               <string/>
-              </property>
-              <property name="textInteractionFlags">
-               <set>Qt::TextInteractionFlag::NoTextInteraction</set>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QPlainTextEdit" name="plainTextEdit">
-              <property name="minimumSize">
-               <size>
-                <width>40</width>
-                <height>40</height>
-               </size>
-              </property>
-              <property name="font">
-               <font>
-                <family>Courier</family>
-               </font>
-              </property>
-              <property name="sizeAdjustPolicy">
-               <enum>QAbstractScrollArea::SizeAdjustPolicy::AdjustToContents</enum>
-              </property>
-              <property name="lineWrapMode">
-               <enum>QPlainTextEdit::LineWrapMode::NoWrap</enum>
-              </property>
-              <property name="plainText">
-               <string/>
-              </property>
-              <property name="backgroundVisible">
-               <bool>true</bool>
-              </property>
-              <property name="centerOnScroll">
-               <bool>false</bool>
-              </property>
-              <property name="placeholderText">
-               <string/>
-              </property>
-             </widget>
-            </item>
-           </layout>
-          </item>
-         </layout>
+          <property name="iconSize">
+           <size>
+            <width>16</width>
+            <height>16</height>
+           </size>
+          </property>
+          <property name="tabsClosable">
+           <bool>true</bool>
+          </property>
+          <property name="movable">
+           <bool>true</bool>
+          </property>
+          <property name="tabBarAutoHide">
+           <bool>false</bool>
+          </property>
+          <widget class="QWidget" name="tab">
+           <property name="font">
+            <font>
+             <family>Courier 10 Pitch</family>
+            </font>
+           </property>
+           <attribute name="title">
+            <string>Tab 1</string>
+           </attribute>
+          </widget>
+          <widget class="QWidget" name="tab_2">
+           <property name="font">
+            <font>
+             <family>Courier 10 Pitch</family>
+            </font>
+           </property>
+           <attribute name="title">
+            <string>Tab 2</string>
+           </attribute>
+          </widget>
+         </widget>
         </item>
        </layout>
       </widget>
@@ -177,7 +122,7 @@
      <x>0</x>
      <y>0</y>
      <width>800</width>
-     <height>25</height>
+     <height>20</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -215,7 +160,7 @@
     <property name="title">
      <string>View</string>
     </property>
-    <addaction name="actionShow_File_P"/>
+    <addaction name="actionShow_File_Tree"/>
     <addaction name="actionClear_Terminal"/>
    </widget>
    <addaction name="menuFile"/>
@@ -224,7 +169,7 @@
    <addaction name="menuRun"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
-  <widget class="QDockWidget" name="dockWidget_2">
+  <widget class="QDockWidget" name="terminalDockWidget">
    <property name="baseSize">
     <size>
      <width>157</width>
@@ -268,7 +213,7 @@
         </attribute>
         <layout class="QVBoxLayout" name="verticalLayout_5">
          <item alignment="Qt::AlignmentFlag::AlignRight">
-          <widget class="QPushButton" name="pushButton">
+          <widget class="QPushButton" name="runFileButton">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
              <horstretch>0</horstretch>
@@ -334,10 +279,10 @@
     </layout>
    </widget>
   </widget>
-  <widget class="QDockWidget" name="dockWidget_4">
+  <widget class="QDockWidget" name="fileTreeDockWidget">
    <property name="minimumSize">
     <size>
-     <width>85</width>
+     <width>150</width>
      <height>130</height>
     </size>
    </property>
@@ -475,7 +420,7 @@
     <string>Ctrl+Shift+O</string>
    </property>
   </action>
-  <action name="actionShow_File_P">
+  <action name="actionShow_File_Tree">
    <property name="text">
     <string>Show File Tree</string>
    </property>
@@ -493,7 +438,7 @@
     <string>Ctrl+Shift+N</string>
    </property>
   </action>
-  <zorder>dockWidget_2</zorder>
+  <zorder>terminalDockWidget</zorder>
  </widget>
  <resources/>
  <connections/>

@@ -9,17 +9,20 @@ CONFIG += c++17
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
+    editor.cpp \
     main.cpp \
     mainwindow.cpp \
-    pythoninstaller.cpp \
     searchandreplace.cpp \
+    settingshelper.cpp \
     syntaxhighlighter.cpp
 
 HEADERS += \
+    editor.h \
     mainwindow.h \
-    pythoninstaller.h \
     searchandreplace.h \
-    syntaxhighlighter.h
+    settingshelper.h \
+    syntaxhighlighter.h \
+    util.h
 
 FORMS += \
     mainwindow.ui
