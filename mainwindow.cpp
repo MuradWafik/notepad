@@ -132,7 +132,6 @@ void MainWindow::writeToTerminal()
 
 void MainWindow::setUIChanges()
 {
-
     this->ui->terminalDockWidget->hide();
     this->ui->fileTreeDockWidget->hide();
 
