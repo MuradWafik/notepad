@@ -13,12 +13,13 @@ editor::editor(QTabWidget *parent)
     textEdit(new QPlainTextEdit(this)),
     lineNumberTextEdit(new QPlainTextEdit(this)),
     layout(new QHBoxLayout(this)),
-    parent(parent)
+    parent(parent),
+    searchAndReplace(new SearchAndReplace(this->textEdit)),
+    syntaxHighlighter(this->textEdit)
 {
     // storing it into a single widget
     // basically reapplying all the values from the .ui file for the old widgets
     // (translating the markup to code here)
-
 
     lineNumberTextEdit->setMinimumSize(20, 40);
     lineNumberTextEdit->setMaximumSize(50, 16777215);
@@ -63,14 +64,35 @@ editor::editor(QTabWidget *parent)
 
     connect(textEdit, &QPlainTextEdit::textChanged, this, [this]{
         textEdit->document()->setModified(true);
-        emit modified();
     });
+
     connect(textEdit, &QPlainTextEdit::blockCountChanged, this, &editor::calculateNumberOfLines);
+
+    // to fill out the entire tab like in the original layout
+    layout->addWidget(lineNumberTextEdit);
+    layout->addWidget(textEdit);
+    this->setLayout(layout);
 
 }
 
+editor::~editor()
+{
+    if(unsavedChanges()){
+        auto saved = QMessageBox::question(this,
+                              tr("Unsaved Changes"),
+                              tr("You have some unsaved changes, would you like to save?"),
+                              QMessageBox::Save | QMessageBox::Discard, QMessageBox::Save);
+        if(saved == QMessageBox::Save){
+            saveFile();
+        }
 
-void editor::synchronizeScrollBars(){
+        delete searchAndReplace;
+    }
+}
+
+
+void editor::synchronizeScrollBars()
+{
     int textEditScrollValue = textEdit->verticalScrollBar()->value();
     int lineNumScrollValue = lineNumberTextEdit->verticalScrollBar()->value();
 
@@ -80,8 +102,8 @@ void editor::synchronizeScrollBars(){
     }
 }
 
-void editor::calculateNumberOfLines(int newBlockCount){
-
+void editor::calculateNumberOfLines(int newBlockCount)
+{
     if(previousNumberOfLines == 0) {
         return; // so it doesn't append on startup just a singular line with the full amount
     }
@@ -113,8 +135,6 @@ void editor::calculateNumberOfLines(int newBlockCount){
 
 void editor::createLineNumbersOnFileOpen(const int lineNumbers)
 {
-    textEdit->document()->setModified(false); // TODO: Make specific openFile method here, and move there
-    fileContentAfterSave = getText();; //
 
     lineNumberTextEdit->clear(); // clears the text in case user opens another file
 
@@ -124,7 +144,8 @@ void editor::createLineNumbersOnFileOpen(const int lineNumbers)
     }
 }
 
-void editor::commentLines(){
+void editor::commentLines()
+{
     auto textCursor = textEdit->textCursor();
     // how commenting out multiple lines works
     // multiple lines selected -> if they are all comments it uncomments
@@ -156,11 +177,10 @@ void editor::commentLines(){
     else {
         addComments();
     }
-
-
 }
 
-void editor::addComments() {
+void editor::addComments()
+{
     auto textCursor = textEdit->textCursor();
     // case when not every line is a comment
 
@@ -191,14 +211,14 @@ void editor::addComments() {
     }
 
     else{
-        // textCursor.insertText("#");
         textCursor.movePosition(QTextCursor::StartOfLine);
         textCursor.insertText("#");
     }
 }
 
 
-void editor::removeComments(){
+void editor::removeComments()
+{
     auto textCursor = textEdit->textCursor();
     if (textCursor.hasSelection()) {
         int start = textCursor.selectionStart();
@@ -249,7 +269,6 @@ void editor::saveFile()
         out << text;
 
         file.close();
-        fileContentAfterSave = text;
         textEdit->document()->setModified(false);
 
         // updateWindowTitle();
@@ -284,25 +303,25 @@ void editor::saveAs()
     out << currentText;  // sets the text content of that file equal to the current text
     file.close();
 
-    fileContentAfterSave = currentText;  // updates saved content tracker.
-
     // updateWindowTitle();
     updateTabTitle();
 }
 
-void editor::openFile(QFile& file){
+void editor::openFile(QFile& file)
+{
     currentFile = file.fileName();
 
     QTextStream in(&file);
     QString text = in.readAll();
     textEdit->setPlainText(text);
 
-    SyntaxHighlighter::searchTextForMatches(text);
-    SyntaxHighlighter::highlightText(text, textEdit);
+    syntaxHighlighter.highlightText(); // it seems that highlighting the text emits the textChanged signal (which caused the save question to always go off)
+
+    textEdit->document()->setModified(false);
 }
 
-void editor::updateTabTitle(){
-    // textIsSameAfterSave = fileContentAfterSave == this->ui->plainTextEdit->toPlainText();
+void editor::updateTabTitle()
+{
     if(unsavedChanges()){
         QString unsavedChangesText{"*(" +currentFile + ")"};
         parent->setTabText(parent->currentIndex(), unsavedChangesText);
@@ -312,4 +331,21 @@ void editor::updateTabTitle(){
     else{
         parent->setTabText(parent->currentIndex(), currentFile);
     }
+}
+
+void editor::showSearchAndReplace()
+{
+    this->searchAndReplace->showWidget();
+}
+
+void editor::resizeEvent(QResizeEvent* e)
+{
+
+    QWidget::resizeEvent(e);
+
+    // move search and replace widget to the top right
+    const int margin = 10; // Margin from the top and right edges
+    QPoint topRight = textEdit->rect().topRight();
+    searchAndReplace->move(topRight.x()- searchAndReplace->width() - margin, topRight.y() + margin);
+
 }

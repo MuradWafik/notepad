@@ -5,12 +5,15 @@
 #include <QPlainTextEdit>
 #include <QHBoxLayout>
 #include <QTabWidget>
+#include "searchandreplace.h"
+#include "syntaxhighlighter.h"
+
 class editor : public QWidget
 {
     Q_OBJECT
 public:
     explicit editor(QTabWidget *parent);
-
+    ~editor();
 
     // multiple methods that just call on the same for the main plaintTextEdit
     inline QString getText() const{
@@ -24,9 +27,9 @@ public:
     inline int blockCount() const{
         return textEdit->blockCount();
     }
-    // inline QPlainTextEdit* getPte() const{
-    //     return textEdit;
-    // }
+    inline QPlainTextEdit* getPte() const{
+        return textEdit;
+    }
 
     void commentLines(); // base functionality after clicking Ctrl + /, checks what actions should be done
     void addComments(); // adds comments to blocks of code
@@ -45,18 +48,17 @@ public:
     }
 
     void openFile(QFile& file);
-
-signals:
-    void modified(); // if the text from the editor is modified, re-emits to the signal modified
+    void showSearchAndReplace();
 
 private:
     QPlainTextEdit *textEdit, *lineNumberTextEdit;
     QHBoxLayout *layout;
     const inline static QFont font{"Courier"};
     int previousNumberOfLines = 0;
-    QString fileContentAfterSave;
     QString currentFile;
     QTabWidget* parent;
+    SearchAndReplace* searchAndReplace;
+    SyntaxHighlighter syntaxHighlighter;
 
 private:
     void createLineNumbersOnFileOpen(int lineNumbers);
@@ -64,6 +66,9 @@ private slots:
     void synchronizeScrollBars(); // matches the scroll value for the text and the line numbers
     void calculateNumberOfLines(int newBlockCount);
     void updateTabTitle(); // add the * to the tab title if it has unsaved changes
+
+    void resizeEvent(QResizeEvent*) override;
 };
+
 
 #endif // EDITOR_H

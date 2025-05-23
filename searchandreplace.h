@@ -1,17 +1,3 @@
-// #ifndef SEARCHANDREPLACE_H
-// #define SEARCHANDREPLACE_H
-
-// #include <QDockWidget>
-
-// class SearchAndReplace : public QDockWidget
-// {
-// public:
-//     SearchAndReplace();
-// };
-
-// #endif // SEARCHANDREPLACE_H
-
-
 #ifndef SEARCHANDREPLACE_H
 #define SEARCHANDREPLACE_H
 
@@ -26,7 +12,7 @@
 #include <QCheckBox>
 #include <QFrame>
 
-
+// it seems the best way to have is for each editor to have its own instance and delete that in the desctructor
 class SearchAndReplace : public QDockWidget
 {
     // Q_OBJECT // this line was not included when i made a new class with the qt dialog, will omit for now
@@ -70,6 +56,9 @@ private:
     QPushButton* prevMatchButton;
     QLabel* occurenceIteratorLabel;
     int selectedOccurenceIndex;
+
+    inline static QColor backgroundColor{252, 238, 60, 138};
+    inline static QBrush brush{backgroundColor};
 
 };
 

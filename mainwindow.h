@@ -61,10 +61,6 @@ private slots:
     void openFile(const QString &filePath);
 
     void updateTerminalAndOutput();
-    void adjustSearchLineEditPosition();
-    void resizeEvent(QResizeEvent*) override;
-
-    void createSearchAndReplaceWidgets();
 
     void openFolderDialog();
 
@@ -88,11 +84,10 @@ private:
     QFileSystemModel *fileModel; // the file explorer  on the left for treeview
 
     editor* openEditor = nullptr;
-    QVector<QTextCursor> foundOccurrences;
 
     QLabel* lineAndColStatusLabel;
-    QLabel* searchAndReplaceStatusLabel;
-    SearchAndReplace* searchReplaceWidget;
-    // searchAndReplaceObject obj;
+
+    // QLabel* searchAndReplaceStatusLabel; // the bottom status bar for text occurunces replaced, i gueess disregard for now?
+
 };
 #endif // MAINWINDOW_H

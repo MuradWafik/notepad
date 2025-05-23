@@ -19,13 +19,10 @@ MainWindow::MainWindow(QWidget *parent)
 
 
     setUIChanges();
-    createSearchAndReplaceWidgets();
 
     // TODO: find alternative
     // ui->plainTextEdit->installEventFilter(this);
 
-
-    // searchReplaceWidget = new SearchAndReplace(openEditor->getPte());
     connectSignals();
 }
 
@@ -36,7 +33,6 @@ MainWindow::~MainWindow()
         process->waitForFinished();
     }
 
-    delete searchReplaceWidget;
     delete process;
     delete ui;
 }
@@ -55,30 +51,29 @@ void MainWindow::openFileAction()
         }
     }
 
+    if(this->ui->stackedWidget->currentIndex() == 0){
+        this->ui->stackedWidget->setCurrentIndex(1); // show the page for the editors... not the page saying open a file to begin
+    }
+
     QString fileName = QFileDialog::getOpenFileName(this, ("Choose File To Open"));
 
     // setOption(QFileDialog.ReadOnly, true);
     openFile(fileName);
     getAllFilesInDirectory();
-    adjustSearchLineEditPosition();
 }
-
-
 
 void MainWindow::updateStatusBarCursorPosition()
 {
 
-    qDebug()<< "Not Implemented";
-    // auto cursor = this->ui->plainTextEdit->textCursor();
+    if(openEditor == nullptr) return;
+    auto cursor = openEditor->getPte()->textCursor();
 
-    // int col = cursor.columnNumber() + 1;
-    // int line = cursor.blockNumber() + 1;
-    // QString text = "LN: " + QString::number(line) + ", COL: " + QString::number(col);
-    // statusBar()->showMessage(text);
-    // lineAndColStatusLabel->setText(text);
+    int col = cursor.columnNumber() + 1;
+    int line = cursor.blockNumber() + 1;
+    QString text = "LN: " + QString::number(line) + ", COL: " + QString::number(col);
+    statusBar()->showMessage(text);
+    lineAndColStatusLabel->setText(text);
 }
-
-
 
 void MainWindow::initTerminalBox()
 {
@@ -138,11 +133,8 @@ void MainWindow::setUIChanges()
     setCorner(Qt::BottomLeftCorner, Qt::LeftDockWidgetArea);
     setCorner(Qt::BottomRightCorner, Qt::RightDockWidgetArea); // makes the file explorer, whether right or left fill the space instead of the terminal
 
-    this->ui->openEditorsTabWidget->removeTab(0);
-    this->ui->openEditorsTabWidget->removeTab(1); // for some reason cant remove them in the ui design, has to be in code
-
-    // searchAndReplaceContainer->hide();
-
+    this->ui->openEditorsTabWidget->removeTab(0); // for some reason cant remove them in the ui design, has to be in code
+    this->ui->openEditorsTabWidget->removeTab(0); // deleting tab 0, then index 1 drops down to index 0
 }
 
 void MainWindow::runButton()
@@ -200,29 +192,24 @@ void MainWindow::openFile(const QString &filePath)
         return;
     }
 
-    if(ui->stackedWidget->currentIndex() == 0){
-        this->ui->stackedWidget->setCurrentIndex(1); // sets the page to the text editor page
-    }
-
     this->ui->actionSave->setEnabled(true); // if they successfully opened a file, the save button can be used for it
 
     editor* nextPage = new editor(this->ui->openEditorsTabWidget);
     openEditor = nextPage;
 
+    nextPage->openFile(file);
+
     int newTab = this->ui->openEditorsTabWidget->addTab(nextPage, file.fileName());
     this->ui->tabWidget->setCurrentIndex(newTab);
 
-    nextPage->openFile(file);
+
 
     file.close();
 
     this->ui->fileTreeDockWidget->showNormal();
     this->ui->terminalDockWidget->showNormal(); // shows both docks, file explorer, and output
 
-
     updateTerminalAndOutput();
-    // updateWindowTitle();
-
 }
 
 void MainWindow::updateTerminalAndOutput()
@@ -238,25 +225,10 @@ void MainWindow::updateTerminalAndOutput()
     }
 }
 
-
-void MainWindow::adjustSearchLineEditPosition()
-{
-    qDebug()<< "Not Implemented";
-    const int margin = 10; // Margin from the top and right edges
-    // QPoint topRight = openEditor->getPte()->rect().topRight();
-    // searchReplaceWidget->move(topRight.x()- searchReplaceWidget->width() - margin, topRight.y() + margin);
-}
-
-
-void MainWindow::resizeEvent(QResizeEvent *event)
-{
-    adjustSearchLineEditPosition();
-    QMainWindow::resizeEvent(event);
-}
-
-
-void MainWindow::createSearchAndReplaceWidgets()
-{
+// not sure what to do with this now, it was the status bar at the bottom saying how much occurunces were replaced
+// void MainWindow::createSearchAndReplaceWidgets()
+// {
+    // qDebug() << "Not implemented";
     // THE BOTTOM STATUS BAR PART
     // QWidget* statusBarWidget = new QWidget;
     // QHBoxLayout* statusBarLayout = new QHBoxLayout;
@@ -268,7 +240,7 @@ void MainWindow::createSearchAndReplaceWidgets()
     // statusBarLayout->addSpacerItem(new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum));
     // statusBarLayout->addWidget(searchAndReplaceStatusLabel);
     // ui->statusbar->addWidget(statusBarWidget, 1); // adds the widget and makes it stretch to fill entire status bar
-}
+// }
 
 
 void MainWindow::openFolderDialog()
@@ -283,9 +255,11 @@ void MainWindow::openFolderDialog()
     }
     */
 
-    QString dir = QFileDialog::getExistingDirectory(this, tr("Open Directory"),
+    QString dir = QFileDialog::getExistingDirectory(this,
+                                                    tr("Open Directory"),
                                                     tr("/home"),
-                                                    QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
+                                                    QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks
+                                                    );
     if(dir.isEmpty()){
         QMessageBox::warning(this, tr("Warning"), tr("Unable To Open Folder"));
         return;
@@ -318,7 +292,7 @@ void MainWindow::openFileWhileEditing(const QString& path){
 
 bool MainWindow::eventFilter(QObject *obj, QEvent *event)
 {
-    qDebug()<< "Not Implemented";
+    qDebug()<< "Not Implemented in event filter";
     // if (obj == openEditor->getPte()) {
     //     if (event->type() == QEvent::KeyPress) {
     //         QKeyEvent *keyEvent = static_cast<QKeyEvent *>(event);
@@ -356,12 +330,13 @@ void MainWindow::showCustomContextMenu(const QPoint &pos){
 
     QAction deleteAction("Delete", this);
     connect(&deleteAction, &QAction::triggered, this, [this, &fileToOpenPath]() {
-        qDebug()<< "Not Implemented";
-        // if(fileToOpenPath == currentFile){
-        //     QMessageBox::warning(this, tr("Error"), tr("Can not delete file that is currently open"));
-        //     return;
-        // }
-        // QFile::remove(fileToOpenPath);
+        if(openEditor == nullptr) return; // should be disabled here anyways
+
+        if(fileToOpenPath == openEditor->fileName()){
+            QMessageBox::warning(this, tr("Error"), tr("Can not delete file that is currently open"));
+            return;
+        }
+        QFile::remove(fileToOpenPath);
     });
 
     QAction openAction("Open", this);
@@ -499,7 +474,7 @@ void MainWindow::newPythonFile()
 
     openFile(fileName);
     getAllFilesInDirectory();
-    adjustSearchLineEditPosition();
+
 }
 
 void MainWindow::connectSignals(){ // relying on the connection of slots that the qt generated on_foo_bar as clangd would say
@@ -535,30 +510,30 @@ void MainWindow::connectSignals(){ // relying on the connection of slots that th
         } // tries to cast the focused widget into one of these, if possible calls on the built in select all function
 
     });
-    connect(this->ui->actionUndo, &QAction::triggered, this, [this]{
-        throw std::runtime_error("Not Implemented");
-        // if(currentFile.isEmpty()) return;
-        // QWidget* focusedWidget = QApplication::focusWidget();
-        // if (auto plainTextEdit = qobject_cast<QPlainTextEdit*>(focusedWidget)) {
-        //     plainTextEdit->undo();
-        // }
-        // else if (auto lineEdit = qobject_cast<QLineEdit*>(focusedWidget)) {
-        //     lineEdit->undo();
-        // } // tries to cast the focused widget into one of these, if possible calls on the built in undo function
+    connect(this->ui->actionUndo, &QAction::triggered, this, []{
+
+        // if(openEditor == nullptr) return;
+        QWidget* focusedWidget = QApplication::focusWidget();
+        if (auto plainTextEdit = qobject_cast<QPlainTextEdit*>(focusedWidget)) {
+            plainTextEdit->undo();
+        }
+        else if (auto lineEdit = qobject_cast<QLineEdit*>(focusedWidget)) {
+            lineEdit->undo();
+        } // tries to cast the focused widget into one of these, if possible calls on the built in undo function
     });
-    connect(this->ui->actionRedo, &QAction::triggered, this, [this]{
-        throw std::runtime_error("Not Implemented");
+
+    connect(this->ui->actionRedo, &QAction::triggered, this, []{
         // if(currentFile.isEmpty()) return;
-        // QWidget* focusedWidget = QApplication::focusWidget();
+        QWidget* focusedWidget = QApplication::focusWidget();
 
-        // if (auto plainTextEdit = qobject_cast<QPlainTextEdit*>(focusedWidget)) {
-        //     plainTextEdit->redo();
-        // }
-        // else if (auto lineEdit = qobject_cast<QLineEdit*>(focusedWidget)) {
-        //     lineEdit->redo();
+        if (auto plainTextEdit = qobject_cast<QPlainTextEdit*>(focusedWidget)) {
+            plainTextEdit->redo();
+        }
+        else if (auto lineEdit = qobject_cast<QLineEdit*>(focusedWidget)) {
+            lineEdit->redo();
 
-        // } //  just like undo
-        // //tries to cast the focused widget into one of these, if possible calls on the built in redo function
+        } //  just like undo
+        //tries to cast the focused widget into one of these, if possible calls on the built in redo function
     });
 
 
@@ -578,7 +553,10 @@ void MainWindow::connectSignals(){ // relying on the connection of slots that th
         this->ui->fileTreeDockWidget->showNormal();
     });
     connect(this->ui->actionFind_Replace, &QAction::triggered, this, [this]{
-        qDebug()<< "Not Implemented";
+        // qDebug()<< "Not Implemented";
+        if(openEditor == nullptr) return;
+        openEditor->showSearchAndReplace();
+
         // if(currentFile.isEmpty()) return;
         // searchReplaceWidget->showWidget();
         // searchReplaceWidget.showWidget();
@@ -592,8 +570,15 @@ void MainWindow::connectSignals(){ // relying on the connection of slots that th
     connect(this->ui->runFileButton, &QPushButton::pressed, this, &MainWindow::runButton);
     connect(this->ui->inputTerminalCommand, &QLineEdit::returnPressed, this, &MainWindow::writeToTerminal);
 
-    connect(this->ui->openEditorsTabWidget, &QTabWidget::tabBarClicked, this, [this]{
+    connect(this->ui->openEditorsTabWidget, &QTabWidget::currentChanged, this, [this]{
         openEditor = qobject_cast<editor*>(ui->openEditorsTabWidget->currentWidget());
+    });
+
+    connect(this->ui->openEditorsTabWidget, &QTabWidget::tabCloseRequested, this, [this](int index){
+        delete openEditor; // call on its destructor which manages choices regarding save
+        this->ui->openEditorsTabWidget->removeTab(index);
+        openEditor = qobject_cast<editor*>(this->ui->openEditorsTabWidget->currentWidget());
+        // on closing a tab, delete a pointer (it manages its own data), and change the pointer to the current open tab
     });
 }
 
@@ -602,8 +587,9 @@ void MainWindow::newTextFile()
 {
     QString fileName = QFileDialog::getSaveFileName(this,
                                                     tr("Create New Text File File"),
-                                                    QDir::homePath(),  // Default directory
-                                                    tr("Text Files (*.txt);;All Files (*)"));
+                                                    QDir::homePath(),  // default directory
+                                                    tr("Text Files (*.txt);;All Files (*)")
+                                                    );
 
     // do nothing if they cancel, maybe show message warning later on
     if (fileName.isEmpty()) {
@@ -617,7 +603,6 @@ void MainWindow::newTextFile()
 
     QFile file(fileName);
     if (!file.open(QIODevice::WriteOnly)) {
-
         QString error{"Failed to create the file: "+ file.errorString()};
         QMessageBox::warning(this, tr("Error"), tr(error.toStdString().c_str()));
         return;
@@ -627,10 +612,7 @@ void MainWindow::newTextFile()
 
     openFile(fileName);
     getAllFilesInDirectory();
-    adjustSearchLineEditPosition();
 }
-
-
 
 void MainWindow::showTerminal(){
     this->ui->terminalDockWidget->showNormal(); // if they press new terminal, it shows the widget

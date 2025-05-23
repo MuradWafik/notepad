@@ -1,17 +1,15 @@
 #include "syntaxhighlighter.h"
 #include <QTextBlock>
 
-void SyntaxHighlighter::searchTextForMatches(QStringView text, qsizetype startOffset){
+SyntaxHighlighter::SyntaxHighlighter(QPlainTextEdit* pte) : pte(pte)
+{}
 
 
-    // QRegularExpressionMatchIterator commentIterator = commentRegex.globalMatchView(text, startOffset);
-    // populateMatchSet(comments, commentIterator);
-
+void SyntaxHighlighter::searchTextForMatches(qsizetype startOffset)
+{
+    const auto text = pte->toPlainText();
     QRegularExpressionMatchIterator keywordsIterator = keywordsRegex.globalMatchView(text, startOffset);
     populateMatchSet(keywords, keywordsIterator);
-
-    // QRegularExpressionMatchIterator stringIterator = stringRegex.globalMatchView(text, startOffset);
-    // populateMatchSet(strings, stringIterator);
 
     QRegularExpressionMatchIterator functionIterator = classRegex.globalMatchView(text, startOffset);
     populateMatchSet(functions, functionIterator);
@@ -22,14 +20,13 @@ void SyntaxHighlighter::searchTextForMatches(QStringView text, qsizetype startOf
 }
 
 
-void SyntaxHighlighter::highlightText(QStringView text, QPlainTextEdit* pte, qsizetype startOffset){
-    searchTextForMatches(text, startOffset);
+void SyntaxHighlighter::highlightText(qsizetype startOffset)
+{
+    searchTextForMatches(startOffset);
 
-    // highlightType(comments, commentColor, pte);
-    // highlightType(strings, stringColor, pte);
-    highlightType(keywords, keywordColor, pte);
-    highlightType(classes, classColor, pte);
-    highlightType(functions, functionColor, pte);
+    highlightType(keywords, keywordColor);
+    highlightType(classes, classColor);
+    highlightType(functions, functionColor);
 
 
     QTextDocument *document = pte->document();
@@ -38,15 +35,13 @@ void SyntaxHighlighter::highlightText(QStringView text, QPlainTextEdit* pte, qsi
         QString lineText = block.text();
         int lineStartPos = block.position(); // character offset in the full document
         // Use lineText and lineStartPos as needed
-        extractStringsAndComments(document, lineText, lineStartPos);
-    }
+        extractStringsAndComments(lineText, lineStartPos);
 
-
-
-
+        }
 }
 
-void SyntaxHighlighter::highlightType(const QSet<match>& toHighlight, const QColor& color, QPlainTextEdit* pte){
+void SyntaxHighlighter::highlightType(const QSet<match>& toHighlight, const QColor& color)
+{
 
     QTextDocument *document = pte->document();
 
@@ -66,11 +61,12 @@ void SyntaxHighlighter::highlightType(const QSet<match>& toHighlight, const QCol
 
 }
 
-void SyntaxHighlighter::extractStringsAndComments(QTextDocument* doc, const QString& line, int lineOffset) {
+void SyntaxHighlighter::extractStringsAndComments(const QString& line, int lineOffset)
+{
     bool inString = false;
     int commentStart = -1;
 
-    QTextCursor cursor{doc};
+    QTextCursor cursor{pte->document()};
     QTextCharFormat format{};
 
     for (int i = 0; i < line.length(); ++i) {

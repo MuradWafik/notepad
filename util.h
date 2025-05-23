@@ -1,10 +1,11 @@
 #pragma once
 
 #include <QString>
+#include <QFont>
 namespace util{
-
     inline static QString getShellCommand()
-    { // differentiates the terminial start based on the operating system
+    {
+        // differentiates the terminial start based on the operating system
         #ifdef _WIN32 // maybe change to user choice, maybe could use powershell
             return "cmd.exe";
         #else

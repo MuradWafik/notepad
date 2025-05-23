@@ -56,8 +56,11 @@ void SearchAndReplace::setupUI(){
     QVBoxLayout* searchAndReplaceParent = new QVBoxLayout;
 
     searchTextLineEdit = new QLineEdit;
+    searchTextLineEdit->setStyleSheet("color: white;");
     searchAndReplaceParent->addWidget(searchTextLineEdit);
+
     replaceTextLineEdit = new QLineEdit;
+    replaceTextLineEdit->setStyleSheet("color: white;");
     searchAndReplaceParent->addWidget(replaceTextLineEdit);
 
 
@@ -186,6 +189,7 @@ void SearchAndReplace::searchForText(const QString& text){
     foundOccurrences.clear(); // clears the vector storing all instances
 
     if (text.isEmpty()) {
+        occurenceIteratorLabel->setText("0 / 0"); // show that there are no matches in the ui as well
         return; // returns if empty string
     }
 
@@ -197,7 +201,7 @@ void SearchAndReplace::searchForText(const QString& text){
 
     QTextCharFormat plainFormat(highlightCursor.charFormat());
     QTextCharFormat colorFormat = plainFormat;
-    colorFormat.setBackground(Qt::blue);
+    colorFormat.setBackground(brush);
 
     QTextDocument::FindFlags flag;
 
@@ -251,7 +255,8 @@ void SearchAndReplace::goToPreviousSelection() {
     // same as go to next
     QTextCursor cursor = foundOccurrences.at(selectedOccurenceIndex-1);
     QTextCharFormat oldCursorPosFormat;
-    oldCursorPosFormat.setBackground(Qt::blue);
+
+    oldCursorPosFormat.setBackground(brush);
     cursor.setCharFormat(oldCursorPosFormat);
 
     if (selectedOccurenceIndex == 1) selectedOccurenceIndex = foundOccurrences.size(); // loops it around to restart at the top
@@ -274,7 +279,7 @@ void SearchAndReplace::goToNextSelection() {
     // resets the color of the previously selected word back to blue
     QTextCursor cursor = foundOccurrences.at(selectedOccurenceIndex-1);
     QTextCharFormat oldCursorPosFormat;
-    oldCursorPosFormat.setBackground(Qt::blue);
+    oldCursorPosFormat.setBackground(brush);
     cursor.setCharFormat(oldCursorPosFormat);
 
     if (selectedOccurenceIndex == foundOccurrences.size()) selectedOccurenceIndex = 1;

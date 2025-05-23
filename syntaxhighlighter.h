@@ -5,18 +5,29 @@
 #include <QStringView>
 #include <QColor>
 #include <QPlainTextEdit>
+
 struct match{
     qsizetype start, end; // choosing to do end for less syntax to see if something is contained within another, like a comment within a string to avoid (hopefully)
 };
+
+// hashing functions to be placed in a set
+inline size_t qHash(const match& m, size_t seed = 0) { // seed is sometimes used for nested hashes? something for QT
+    return size_t(m.start) ^ (size_t(m.end) << 1) ^ seed;
+}
+
+inline bool operator==(const match& lhs, const match& rhs) {
+    return lhs.start == rhs.start && lhs.end == rhs.end;
+}
 
 
 class SyntaxHighlighter
 {
 public:
-    // startOffset = character index to start search from... no need to rerun the regex on start of file when they append at end
-    static void searchTextForMatches(QStringView text, qsizetype startOffset = 0);
+    SyntaxHighlighter(QPlainTextEdit* pte);
+    // methods are now instanced, where each editor has its own syntaxhighlighter
 
-    static void highlightText(QStringView text, QPlainTextEdit* pte, qsizetype startOffset = 0);
+    // startOffset = character index to start search from... no need to rerun the regex on start of file when they append at end
+    void highlightText(qsizetype startOffset = 0);
 public:
     // switch to file later on to allow it to change (themes...)
     inline static QColor commentColor{22, 120, 13};
@@ -26,45 +37,38 @@ public:
     inline static QColor functionColor{145, 20, 47};
 private:
 
-    static inline void populateMatchSet(QSet<match>& set, const QRegularExpressionMatchIterator& matchIterator){
+    inline void populateMatchSet(QSet<match>& set, const QRegularExpressionMatchIterator& matchIterator){
         for(const auto& match : matchIterator){
             set.insert({match.capturedStart(), match.capturedEnd()});
         }
     }
 
-    static void highlightType(const QSet<match>& toHighlight,const QColor& color, QPlainTextEdit* pte);
+    void searchTextForMatches(qsizetype startOffset);
 
-    /* p
+    void highlightType(const QSet<match>& toHighlight,const QColor& color);
+
+    /*
      * Since Regex system does not support variable length lookbehind, can not do checks for whether a '#' is actually within a string
      * or a '"' is within a comment, to solve this, a function is used to extract
      */
-    static void extractStringsAndComments(QTextDocument* doc, const QString& line, int lineOffset);
+    void extractStringsAndComments(const QString& line, int lineOffset);
 
 
 private:
-    // const inline static QRegularExpression stringRegex{R"("""(?:.|\n)*?"""|\'\'\'(?:.|\n)*?\'\'\'|\"(?:\\.|[^\"\\])*\"|\'(?:\\.|[^\\"\\])*\')"};
-    inline static QSet<match> strings{};
+    QPlainTextEdit* pte;
+    QSet<match> strings{};
 
-    // const inline static QRegularExpression commentRegex{R"(\#.*)"};
-    inline static QSet<match> comments{};
+    QSet<match> comments{};
 
     const inline static QRegularExpression keywordsRegex{R"(\b(def|class|if|else|elif|return|import|from|while|for|in|try|except|with|as|pass|yield|async|await|None|True|False)\b)"};
-    inline static QSet<match> keywords{};
+    QSet<match> keywords{};
 
     const inline static QRegularExpression functionRegex{R"(\bdef\s+([a-zA-Z_][a-zA-Z0-9_]*)\b)"};
-    inline static QSet<match> functions{};
+    QSet<match> functions{};
 
     const inline static QRegularExpression classRegex{R"(\bclass\s+([a-zA-Z_][a-zA9_]*)\b)"};
-    inline static QSet<match> classes{};
+    QSet<match> classes{};
 
 };
-
-inline size_t qHash(const match& m, size_t seed = 0) { // seed is sometimes used for nested hashes? something for QT
-    return size_t(m.start) ^ (size_t(m.end) << 1) ^ seed;
-}
-
-inline bool operator==(const match& lhs, const match& rhs) {
-    return lhs.start == rhs.start && lhs.end == rhs.end;
-}
 
 #endif // SYNTAXHIGHLIGHTER_H
