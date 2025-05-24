@@ -2,6 +2,7 @@
 #include "ui_mainwindow.h"
 #include "util.h"
 #include "editor.h"
+#include <QAnyStringView>
 
 
 MainWindow::MainWindow(QWidget *parent)
@@ -185,6 +186,20 @@ void MainWindow::getAllFilesInDirectory(QString &directory)
 
 void MainWindow::openFile(const QString &filePath)
 {
+    if(filePath.isEmpty()) {
+        QMessageBox::warning(this,
+                             tr("Warning"),
+                             tr("Please select a file")
+                            );
+        return;
+    }
+
+    // despite the editor being the direct child of the tab, putting the flag to seach children only (not recursivly) always results in a nullptr
+    const editor* child = this->ui->openEditorsTabWidget->findChild<editor*>(filePath);
+    if(child != nullptr){
+        return; // that means it already has a tab open on this file
+    }
+
     QFile file(filePath);
     if(!file.open(QIODevice::ReadOnly | QFile::Text)){
         QString errorMessage{"Can Not Open File " + file.errorString()};
@@ -195,14 +210,15 @@ void MainWindow::openFile(const QString &filePath)
     this->ui->actionSave->setEnabled(true); // if they successfully opened a file, the save button can be used for it
 
     editor* nextPage = new editor(this->ui->openEditorsTabWidget);
+    nextPage->setObjectName(filePath);
     openEditor = nextPage;
 
-    nextPage->openFile(file);
 
     int newTab = this->ui->openEditorsTabWidget->addTab(nextPage, file.fileName());
     this->ui->tabWidget->setCurrentIndex(newTab);
 
 
+    nextPage->openFile(file);
 
     file.close();
 
@@ -224,24 +240,6 @@ void MainWindow::updateTerminalAndOutput()
         initTerminalBox();
     }
 }
-
-// not sure what to do with this now, it was the status bar at the bottom saying how much occurunces were replaced
-// void MainWindow::createSearchAndReplaceWidgets()
-// {
-    // qDebug() << "Not implemented";
-    // THE BOTTOM STATUS BAR PART
-    // QWidget* statusBarWidget = new QWidget;
-    // QHBoxLayout* statusBarLayout = new QHBoxLayout;
-    // statusBarWidget->setLayout(statusBarLayout);
-    // lineAndColStatusLabel = new QLabel(this);
-    // searchAndReplaceStatusLabel = new QLabel(this);
-
-    // statusBarLayout->addWidget(lineAndColStatusLabel);
-    // statusBarLayout->addSpacerItem(new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum));
-    // statusBarLayout->addWidget(searchAndReplaceStatusLabel);
-    // ui->statusbar->addWidget(statusBarWidget, 1); // adds the widget and makes it stretch to fill entire status bar
-// }
-
 
 void MainWindow::openFolderDialog()
 {
@@ -270,7 +268,6 @@ void MainWindow::openFolderDialog()
     updateTerminalAndOutput();
 
     getAllFilesInDirectory(dir);
-    setWindowTitle(dir);
 }
 
 void MainWindow::openFileWhileEditing(const QString& path){
@@ -286,24 +283,6 @@ void MainWindow::openFileWhileEditing(const QString& path){
     */
     qDebug()<< "Not Implemented";
     openFile(path);
-}
-
-
-
-bool MainWindow::eventFilter(QObject *obj, QEvent *event)
-{
-    qDebug()<< "Not Implemented in event filter";
-    // if (obj == openEditor->getPte()) {
-    //     if (event->type() == QEvent::KeyPress) {
-    //         QKeyEvent *keyEvent = static_cast<QKeyEvent *>(event);
-    //         if((keyEvent->modifiers() & Qt::ControlModifier) && (keyEvent->key() == Qt::Key_Slash)) {
-
-    //             openEditor->commentLines();
-    //             return true;
-    //         }
-    //     }
-    // }
-    return QMainWindow::eventFilter(obj, event);
 }
 
 
@@ -575,8 +554,14 @@ void MainWindow::connectSignals(){ // relying on the connection of slots that th
     });
 
     connect(this->ui->openEditorsTabWidget, &QTabWidget::tabCloseRequested, this, [this](int index){
-        delete openEditor; // call on its destructor which manages choices regarding save
-        this->ui->openEditorsTabWidget->removeTab(index);
+        //delete openEditor; // call on its destructor which manages choices regarding save
+
+        // this->ui->openEditorsTabWidget->removeTab(index);
+        // for some reason, removing the tab through the intended method does not manage its memory, but also does deletes the tab to its right if you try to manage the memory
+
+        // to negate the issue mentioned above, it sets the pointer to the intended tab to be closed, and deletes that
+        openEditor = qobject_cast<editor*>(this->ui->openEditorsTabWidget->widget(index));
+        openEditor->deleteLater();
         openEditor = qobject_cast<editor*>(this->ui->openEditorsTabWidget->currentWidget());
         // on closing a tab, delete a pointer (it manages its own data), and change the pointer to the current open tab
     });

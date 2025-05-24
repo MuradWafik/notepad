@@ -15,9 +15,7 @@
 // it seems the best way to have is for each editor to have its own instance and delete that in the desctructor
 class SearchAndReplace : public QDockWidget
 {
-    // Q_OBJECT // this line was not included when i made a new class with the qt dialog, will omit for now
-
-
+    Q_OBJECT
 public:
     explicit SearchAndReplace(QPlainTextEdit* parent);
     ~SearchAndReplace();
@@ -39,9 +37,6 @@ public slots:
     void goToPreviousSelection();
     void goToNextSelection();
 
-
-
-
 private:
     QLineEdit* searchTextLineEdit;
     QLineEdit* replaceTextLineEdit;
@@ -59,7 +54,6 @@ private:
 
     inline static QColor backgroundColor{252, 238, 60, 138};
     inline static QBrush brush{backgroundColor};
-
 };
 
 #endif // SEARCHANDREPLACE_H

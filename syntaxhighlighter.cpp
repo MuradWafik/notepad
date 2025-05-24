@@ -37,7 +37,7 @@ void SyntaxHighlighter::highlightText(qsizetype startOffset)
         // Use lineText and lineStartPos as needed
         extractStringsAndComments(lineText, lineStartPos);
 
-        }
+    }
 }
 
 void SyntaxHighlighter::highlightType(const QSet<match>& toHighlight, const QColor& color)

@@ -4,16 +4,17 @@
 // #include "ui_mainwindow.h"
 #include <QApplication>
 
-SearchAndReplace::SearchAndReplace(QPlainTextEdit* editor)
-    : QDockWidget(editor),
-    editor(editor)
+SearchAndReplace::SearchAndReplace(QPlainTextEdit* parent)
+    : QDockWidget(parent),
+    editor(parent)
 {
     setupUI(); // makes the ui items and signal connections in constructor
     connectSignalsAndSlots();
     this->hide();
 
 }
-SearchAndReplace::~SearchAndReplace() {
+SearchAndReplace::~SearchAndReplace()
+{
     foundOccurrences.clear();
     delete isMatchWholeWord;
     delete isCaseSensitive;

@@ -7,6 +7,7 @@
 #include <QFileDialog>
 #include <QTextStream>
 #include "syntaxhighlighter.h"
+#include <QMainWindow>
 
 editor::editor(QTabWidget *parent)
     : QWidget{parent},
@@ -57,13 +58,14 @@ editor::editor(QTabWidget *parent)
     textEdit->setTabStopDistance(4 * spaceWidth); // tab is 4 spaces, (currently it sets distance not 4 space presses)
 
 
-    // connect(lineNumber->verticalScrollBar(), &QScrollBar::valueChanged, this, &editor::synchronizeScrollBars);
+    connect(lineNumberTextEdit->verticalScrollBar(), &QScrollBar::valueChanged, this, &editor::synchronizeScrollBars);
     connect(textEdit->verticalScrollBar(), &QScrollBar::valueChanged, this, &editor::synchronizeScrollBars);
     // connects the scroll bars of the text box the user types in with the line number text
 
 
-    connect(textEdit, &QPlainTextEdit::textChanged, this, [this]{
-        textEdit->document()->setModified(true);
+    connect(textEdit, &QPlainTextEdit::modificationChanged, this, [this](bool modified){
+        // textEdit->document()->setModified(true);
+        updateTabTitle();
     });
 
     connect(textEdit, &QPlainTextEdit::blockCountChanged, this, &editor::calculateNumberOfLines);
@@ -78,7 +80,7 @@ editor::editor(QTabWidget *parent)
 editor::~editor()
 {
     if(unsavedChanges()){
-        auto saved = QMessageBox::question(this,
+        auto saved = QMessageBox::question(qobject_cast<QMainWindow*>(parent),
                               tr("Unsaved Changes"),
                               tr("You have some unsaved changes, would you like to save?"),
                               QMessageBox::Save | QMessageBox::Discard, QMessageBox::Save);
@@ -98,7 +100,7 @@ void editor::synchronizeScrollBars()
 
     if (textEditScrollValue != lineNumScrollValue) {
         lineNumberTextEdit->verticalScrollBar()->setValue(textEditScrollValue);
-        // text->verticalScrollBar()->setValue(textEditScrollValue);
+        textEdit->verticalScrollBar()->setValue(textEditScrollValue);
     }
 }
 
@@ -177,6 +179,9 @@ void editor::commentLines()
     else {
         addComments();
     }
+
+    syntaxHighlighter.highlightText(); // reapply the syntax highlighting to the modified text
+
 }
 
 void editor::addComments()
@@ -261,7 +266,9 @@ void editor::saveFile()
         QFile file(currentFile);
         if(!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
             QString errorMessage{QString("Unable to Save File ") + file.errorString()};
-            QMessageBox::warning(this, tr("Warning"), tr(errorMessage.toStdString().c_str()));
+            QMessageBox::warning(qobject_cast<QMainWindow*>(parent),
+                                 tr("Warning"),
+                                 tr(errorMessage.toStdString().c_str()));
             return;
         }
         QString text = getText();
@@ -276,7 +283,8 @@ void editor::saveFile()
 
     }
     catch (const std::exception &e) {
-        QMessageBox::warning(this, tr("Warning"), tr(e.what()));
+        QMessageBox::warning(qobject_cast<QMainWindow*>(parent),
+                             tr("Warning"), tr(e.what()));
     }
 }
 
@@ -290,7 +298,7 @@ void editor::saveAs()
 
     QFile file(fileName);
     if (!file.open(QFile::WriteOnly | QFile::Text)) {
-        QMessageBox::warning(this, tr("Warning"), "Can Not Save File: " + file.errorString());
+        QMessageBox::warning(qobject_cast<QMainWindow*>(parent), tr("Warning"), "Can Not Save File: " + file.errorString());
         return;
     }
 
@@ -315,6 +323,10 @@ void editor::openFile(QFile& file)
     QString text = in.readAll();
     textEdit->setPlainText(text);
 
+    previousNumberOfLines = this->textEdit->blockCount();
+    // the number of lines for the line counter, also stores the variable to see if the change was line added or removed
+    createLineNumbersOnFileOpen(previousNumberOfLines);
+
     syntaxHighlighter.highlightText(); // it seems that highlighting the text emits the textChanged signal (which caused the save question to always go off)
 
     textEdit->document()->setModified(false);
@@ -324,28 +336,38 @@ void editor::updateTabTitle()
 {
     if(unsavedChanges()){
         QString unsavedChangesText{"*(" +currentFile + ")"};
-        parent->setTabText(parent->currentIndex(), unsavedChangesText);
+        // parent->setTabText(parent->currentIndex(), unsavedChangesText);
+        int index = parent->indexOf(this);
+
+        parent->setTabText(index, unsavedChangesText);
             // (tr(unsavedWindowTitle.toStdString().c_str()));
     }
     // else if(!this->ui->editorWidget->getPte()->document()->isModified() && windowTitle() != currentFile){
     else{
-        parent->setTabText(parent->currentIndex(), currentFile);
+        int index = parent->indexOf(this);
+
+        parent->setTabText(index, currentFile);
     }
 }
 
-void editor::showSearchAndReplace()
-{
-    this->searchAndReplace->showWidget();
-}
 
 void editor::resizeEvent(QResizeEvent* e)
 {
-
     QWidget::resizeEvent(e);
 
     // move search and replace widget to the top right
     const int margin = 10; // Margin from the top and right edges
     QPoint topRight = textEdit->rect().topRight();
     searchAndReplace->move(topRight.x()- searchAndReplace->width() - margin, topRight.y() + margin);
+}
 
+void editor::keyPressEvent(QKeyEvent *event)
+{
+    if(event->key() == Qt::Key_Slash && event->modifiers().testFlag(Qt::ControlModifier)){
+        commentLines();
+    }
+
+    else{
+        QWidget::keyPressEvent(event);
+    }
 }

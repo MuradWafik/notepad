@@ -40,7 +40,7 @@ public:
 
     // true means there are changes not saved in the file (for actions like opening another)
     inline bool unsavedChanges(){
-        return (!textEdit->toPlainText().isEmpty() && textEdit->document()->isModified());
+        return textEdit->document()->isModified();
     }
 
     inline QString fileName(){
@@ -48,7 +48,9 @@ public:
     }
 
     void openFile(QFile& file);
-    void showSearchAndReplace();
+    inline void showSearchAndReplace(){
+        this->searchAndReplace->showWidget();
+    };
 
 private:
     QPlainTextEdit *textEdit, *lineNumberTextEdit;
@@ -60,6 +62,11 @@ private:
     SearchAndReplace* searchAndReplace;
     SyntaxHighlighter syntaxHighlighter;
 
+protected:
+    void resizeEvent(QResizeEvent*) override;
+    void keyPressEvent(QKeyEvent *event) override;
+
+
 private:
     void createLineNumbersOnFileOpen(int lineNumbers);
 private slots:
@@ -67,7 +74,7 @@ private slots:
     void calculateNumberOfLines(int newBlockCount);
     void updateTabTitle(); // add the * to the tab title if it has unsaved changes
 
-    void resizeEvent(QResizeEvent*) override;
+
 };
 
 

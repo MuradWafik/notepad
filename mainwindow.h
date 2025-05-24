@@ -7,17 +7,12 @@
 #include <QFileDialog>
 #include <QTextStream>
 #include <QMessageBox>
-#include <QVBoxLayout>
 #include <QScrollBar>
 #include <QDebug>
-#include <QTextBlock>
 #include <QProcess>
 #include <QTreeView>
 #include <QFileSystemModel>
-#include <QCheckBox>
-#include <QVector>
 #include <QTextDocumentFragment>
-#include "searchandreplace.h"
 #include "editor.h"
 
 QT_BEGIN_NAMESPACE
@@ -72,10 +67,6 @@ private slots:
     void newPythonFile();
 
     void newTextFile();
-
-protected:
-    // void keyPressEvent(QKeyEvent *event) override;  // Declaration of keyPressEvent
-    bool eventFilter(QObject *obj, QEvent *event) override;
 
 private:
     Ui::MainWindow *ui;
