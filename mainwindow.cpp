@@ -215,6 +215,7 @@ void MainWindow::openFile(const QString &filePath)
 
 
     int newTab = this->ui->openEditorsTabWidget->addTab(nextPage, file.fileName());
+    qDebug() << "New tab index: " << newTab;
     this->ui->tabWidget->setCurrentIndex(newTab);
 
 

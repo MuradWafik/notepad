@@ -39,40 +39,50 @@ public:
     void saveAs();
 
     // true means there are changes not saved in the file (for actions like opening another)
-    inline bool unsavedChanges(){
+    inline bool unsavedChanges() const{
         return textEdit->document()->isModified();
     }
 
-    inline QString fileName(){
+    inline QString fileName() const{
         return currentFile;
     }
 
     void openFile(QFile& file);
+
     inline void showSearchAndReplace(){
         this->searchAndReplace->showWidget();
     };
 
-private:
-    QPlainTextEdit *textEdit, *lineNumberTextEdit;
-    QHBoxLayout *layout;
-    const inline static QFont font{"Courier"};
-    int previousNumberOfLines = 0;
-    QString currentFile;
-    QTabWidget* parent;
-    SearchAndReplace* searchAndReplace;
-    SyntaxHighlighter syntaxHighlighter;
 
 protected:
     void resizeEvent(QResizeEvent*) override;
     void keyPressEvent(QKeyEvent *event) override;
 
-
 private:
     void createLineNumbersOnFileOpen(int lineNumbers);
+
 private slots:
     void synchronizeScrollBars(); // matches the scroll value for the text and the line numbers
     void calculateNumberOfLines(int newBlockCount);
     void updateTabTitle(); // add the * to the tab title if it has unsaved changes
+
+private:
+    const inline static QFont font{"Courier"};
+
+
+    int previousNumberOfLines = 0;
+    QString currentFile;
+
+    // If this goes after the 2 widgets that reference it, app crashes
+    QPlainTextEdit *textEdit, *lineNumberTextEdit;
+
+    QHBoxLayout *layout;
+
+    QTabWidget* parent;
+    SearchAndReplace* searchAndReplace;
+
+    SyntaxHighlighter syntaxHighlighter;
+
 
 
 };

@@ -53,6 +53,9 @@ private:
      */
     void extractStringsAndComments(const QString& line, int lineOffset);
 
+    // do reapply the highlights whilst editting, it must be stripped of all highlights from that point
+    void resetFormating(qsizetype start);
+
 
 private:
     QPlainTextEdit* pte;
@@ -68,6 +71,12 @@ private:
 
     const inline static QRegularExpression classRegex{R"(\bclass\s+([a-zA-Z_][a-zA9_]*)\b)"};
     QSet<match> classes{};
+
+    int oldOffset = 0;
+    // tracker of where the last offset was of highlighting,
+    // since if you adding to the end, no need to redo all highlights
+    // but if its from an earlier line, probably better to do so and clear the set of past matches
+
 
 };
 

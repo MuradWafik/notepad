@@ -18,6 +18,7 @@ SearchAndReplace::~SearchAndReplace()
     foundOccurrences.clear();
     delete isMatchWholeWord;
     delete isCaseSensitive;
+    // i dont think they need deleting as they are added to a layout but its been too long since ive touched this, scared to mess anything up
 }
 
 void SearchAndReplace::setupUI(){

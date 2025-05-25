@@ -17,7 +17,9 @@ editor::editor(QTabWidget *parent)
     parent(parent),
     searchAndReplace(new SearchAndReplace(this->textEdit)),
     syntaxHighlighter(this->textEdit)
+    // reminder** (The order they are initialized here does not matter, what matters is the order they are declared in the header
 {
+
     // storing it into a single widget
     // basically reapplying all the values from the .ui file for the old widgets
     // (translating the markup to code here)
@@ -45,6 +47,8 @@ editor::editor(QTabWidget *parent)
     lineNumberTextEdit->setStyleSheet("QPlainTextEdit {background-color: black;}");
     lineNumberTextEdit->verticalScrollBar()->hide();
 
+    lineNumberTextEdit->setLineWrapMode(QPlainTextEdit::NoWrap);
+
 
     textEdit->setMinimumSize(40, 40);
     textEdit->setFont(font);
@@ -63,8 +67,7 @@ editor::editor(QTabWidget *parent)
     // connects the scroll bars of the text box the user types in with the line number text
 
 
-    connect(textEdit, &QPlainTextEdit::modificationChanged, this, [this](bool modified){
-        // textEdit->document()->setModified(true);
+    connect(textEdit, &QPlainTextEdit::modificationChanged, this, [this](bool){
         updateTabTitle();
     });
 
@@ -148,6 +151,10 @@ void editor::createLineNumbersOnFileOpen(const int lineNumbers)
 
 void editor::commentLines()
 {
+    /* this is a very uneleagant solution though, it modifies the users current cursor, and
+     * if the document was unmodified, it disregards and isModified becomes true (just cause the colors changed)
+     *
+     */
     auto textCursor = textEdit->textCursor();
     // how commenting out multiple lines works
     // multiple lines selected -> if they are all comments it uncomments
@@ -156,6 +163,7 @@ void editor::commentLines()
     // otherwise it goes by each line of the selection
 
     if(textCursor.hasSelection()){
+        const int startIndex = textCursor.selectionStart();
         QString text = textCursor.selection().toPlainText();
 
         QStringList textSplit = text.split("\n");
@@ -169,19 +177,22 @@ void editor::commentLines()
         }
         if(everyLineStartsWithComment) removeComments();
         else addComments();
-        return;
-    }
 
-    QString currentLine = textCursor.block().text();
-    if (currentLine.startsWith("#")) {
-        removeComments();
+        // using selection start wont work as the method calls above moves the cursor
+        syntaxHighlighter.highlightText(startIndex); // reapply the syntax highlighting to the modified text
     }
-    else {
-        addComments();
+    else{
+
+        QString currentLine = textCursor.block().text();
+        if(currentLine.startsWith("#")) {
+            removeComments();
+        }
+        else {
+            addComments();
+        }
+
+        syntaxHighlighter.highlightText(textCursor.position()); // reapply the syntax highlighting to the modified text
     }
-
-    syntaxHighlighter.highlightText(); // reapply the syntax highlighting to the modified text
-
 }
 
 void editor::addComments()
@@ -327,9 +338,10 @@ void editor::openFile(QFile& file)
     // the number of lines for the line counter, also stores the variable to see if the change was line added or removed
     createLineNumbersOnFileOpen(previousNumberOfLines);
 
-    syntaxHighlighter.highlightText(); // it seems that highlighting the text emits the textChanged signal (which caused the save question to always go off)
-
     textEdit->document()->setModified(false);
+    syntaxHighlighter.highlightText();
+    // it seems that highlighting the text emits the textChanged signal (which caused the save question to always go off)
+
 }
 
 void editor::updateTabTitle()
@@ -367,6 +379,9 @@ void editor::keyPressEvent(QKeyEvent *event)
         commentLines();
     }
 
+    else if(event->key() == Qt::Key_P && event->modifiers().testFlag(Qt::ControlModifier)){
+        syntaxHighlighter.highlightText();
+    }
     else{
         QWidget::keyPressEvent(event);
     }

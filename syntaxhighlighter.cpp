@@ -1,6 +1,6 @@
 #include "syntaxhighlighter.h"
 #include <QTextBlock>
-
+#include <QTextCursor>
 SyntaxHighlighter::SyntaxHighlighter(QPlainTextEdit* pte) : pte(pte)
 {}
 
@@ -22,6 +22,23 @@ void SyntaxHighlighter::searchTextForMatches(qsizetype startOffset)
 
 void SyntaxHighlighter::highlightText(qsizetype startOffset)
 {
+    // doesnt seem to work on its own, so now i re-set the flag (and block signals so tab title doesnt freak out)
+    pte->document()->blockSignals(true); // stops the highlighting from emiting a textchange signal
+
+    bool docModifiedBeforeHand = pte->document()->isModified();
+    qDebug() << docModifiedBeforeHand;
+    // old data is useless if you are editing at an earlier point
+    // if(oldOffset <= startOffset || startOffset == 0){
+
+        functions.clear();
+        comments.clear();
+        strings.clear();
+        classes.clear();
+        keywords.clear();
+    // }
+
+    resetFormating(startOffset);
+    oldOffset = startOffset;
     searchTextForMatches(startOffset);
 
     highlightType(keywords, keywordColor);
@@ -34,10 +51,12 @@ void SyntaxHighlighter::highlightText(qsizetype startOffset)
     for (QTextBlock block = document->begin(); block != document->end(); block = block.next()) {
         QString lineText = block.text();
         int lineStartPos = block.position(); // character offset in the full document
-        // Use lineText and lineStartPos as needed
-        extractStringsAndComments(lineText, lineStartPos);
 
+        extractStringsAndComments(lineText, lineStartPos);
     }
+
+    pte->document()->blockSignals(false); // reenables signals
+    pte->document()->setModified(docModifiedBeforeHand);
 }
 
 void SyntaxHighlighter::highlightType(const QSet<match>& toHighlight, const QColor& color)
@@ -87,7 +106,7 @@ void SyntaxHighlighter::extractStringsAndComments(const QString& line, int lineO
     for (int i = 0; i < iterations; ++i) {
         if (line[i] == '"') {
             int start = i++;
-            while (i < iterations && line[i] != '"') { ++i; }
+            while ((i < iterations) && (line[i] != '"')) { ++i; }
             if (i < iterations) ++i;
 
             int globalStart = lineOffset + start;
@@ -111,3 +130,16 @@ void SyntaxHighlighter::extractStringsAndComments(const QString& line, int lineO
     }
 }
 
+
+void SyntaxHighlighter::resetFormating(qsizetype start){
+    if(pte == nullptr) return;
+    QTextCursor cursor{pte->document()};
+    QTextCharFormat format{};
+    format.setForeground(Qt::white);
+
+    // moves cursor from the start index, to the end of the document, clearing all formats
+    cursor.setPosition(start);
+    // cursor.setPosition(QTextCursor::End, QTextCursor::KeepAnchor);
+    cursor.setPosition(pte->document()->characterCount()-1, QTextCursor::KeepAnchor);
+    cursor.setCharFormat(format);
+}
