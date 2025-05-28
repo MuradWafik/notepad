@@ -481,7 +481,6 @@ void MainWindow::connectSignals(){ // relying on the connection of slots that th
         openFileWhileEditing(fileToOpenPath);
     });
 
-
     // MENU ACTION BAR BUTTONS
     connect(this->ui->actionShow_Terminal, &QAction::triggered, this, &MainWindow::showTerminal);
     connect(this->ui->actionNew_Text_File, &QAction::triggered, this, &MainWindow::newTextFile);

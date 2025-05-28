@@ -16,10 +16,10 @@ editor::editor(QTabWidget *parent)
     layout(new QHBoxLayout(this)),
     parent(parent),
     searchAndReplace(new SearchAndReplace(this->textEdit)),
-    syntaxHighlighter(this->textEdit)
+    syntaxHighlighter(new SyntaxHighlighter(this->textEdit->document()))
     // reminder** (The order they are initialized here does not matter, what matters is the order they are declared in the header
 {
-
+    font.setFixedPitch(true);
     // storing it into a single widget
     // basically reapplying all the values from the .ui file for the old widgets
     // (translating the markup to code here)
@@ -175,8 +175,6 @@ void editor::commentLines()
         if(everyLineStartsWithComment) removeComments();
         else addComments();
 
-        // using selection start wont work as the method calls above moves the cursor
-        syntaxHighlighter.highlightText(startIndex); // reapply the syntax highlighting to the modified text
     }
     else{
 
@@ -187,8 +185,6 @@ void editor::commentLines()
         else {
             addComments();
         }
-
-        syntaxHighlighter.highlightText(textCursor.position()); // reapply the syntax highlighting to the modified text
     }
 }
 
@@ -336,7 +332,6 @@ void editor::openFile(QFile& file)
     createLineNumbersOnFileOpen(previousNumberOfLines);
 
     textEdit->document()->setModified(false);
-    syntaxHighlighter.highlightText();
     // it seems that highlighting the text emits the textChanged signal (which caused the save question to always go off)
 
 }
@@ -376,9 +371,10 @@ void editor::keyPressEvent(QKeyEvent *event)
         commentLines();
     }
 
-    else if(event->key() == Qt::Key_P && event->modifiers().testFlag(Qt::ControlModifier)){
-        syntaxHighlighter.highlightText();
-    }
+    // else if(event->key() == Qt::Key_P && event->modifiers().testFlag(Qt::ControlModifier)){
+    //     // syntaxHighlighter.highlightText();
+    //     syntaxHighlighter->highlightBlock(textEdit->toPlainText());
+    // }
     else{
         QWidget::keyPressEvent(event);
     }

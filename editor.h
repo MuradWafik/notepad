@@ -67,8 +67,7 @@ private slots:
     void updateTabTitle(); // add the * to the tab title if it has unsaved changes
 
 private:
-    const inline static QFont font{"Courier"};
-
+    inline static QFont font{"Courier"};
 
     int previousNumberOfLines = 0;
     QString currentFile;
@@ -81,9 +80,7 @@ private:
     QTabWidget* parent;
     SearchAndReplace* searchAndReplace;
 
-    SyntaxHighlighter syntaxHighlighter;
-
-
+    SyntaxHighlighter* syntaxHighlighter;
 
 };
 
