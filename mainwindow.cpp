@@ -34,6 +34,8 @@ MainWindow::~MainWindow()
         process->waitForFinished();
     }
 
+    deleteAllTabs();
+
     delete process;
     delete ui;
 }
@@ -50,10 +52,6 @@ void MainWindow::openFileAction()
         if(saveFileQuestion == QMessageBox::Save){
             openEditor->saveFile();
         }
-    }
-
-    if(this->ui->stackedWidget->currentIndex() == 0){
-        this->ui->stackedWidget->setCurrentIndex(1); // show the page for the editors... not the page saying open a file to begin
     }
 
     QString fileName = QFileDialog::getOpenFileName(this, ("Choose File To Open"));
@@ -76,7 +74,7 @@ void MainWindow::updateStatusBarCursorPosition()
     lineAndColStatusLabel->setText(text);
 }
 
-void MainWindow::initTerminalBox()
+void MainWindow::initTerminalBox(const QString& path)
 {
 
     this->ui->terminalBox->clear(); // clears the text in case they are switching files
@@ -88,7 +86,11 @@ void MainWindow::initTerminalBox()
         QMessageBox::critical(this, tr("Error"), tr("Failed to start the command process"));
         return;
     }
-    process->setWorkingDirectory(QFileInfo(openEditor->fileName()).absolutePath());
+
+    // there is no open editor if you open a folder
+    process->setWorkingDirectory(path);
+        // process->setWorkingDirectory(QFileInfo(openEditor->fileName()).absolutePath());
+
     connect(process, &QProcess::readyReadStandardOutput, this, &MainWindow::on_StdoutAvailable);
     connect(process, &QProcess::readyReadStandardError, this, &MainWindow::on_StderrAvailable); // Connect the error output signal
 
@@ -133,9 +135,6 @@ void MainWindow::setUIChanges()
 
     setCorner(Qt::BottomLeftCorner, Qt::LeftDockWidgetArea);
     setCorner(Qt::BottomRightCorner, Qt::RightDockWidgetArea); // makes the file explorer, whether right or left fill the space instead of the terminal
-
-    this->ui->openEditorsTabWidget->removeTab(0); // for some reason cant remove them in the ui design, has to be in code
-    this->ui->openEditorsTabWidget->removeTab(0); // deleting tab 0, then index 1 drops down to index 0
 }
 
 void MainWindow::runButton()
@@ -186,6 +185,7 @@ void MainWindow::getAllFilesInDirectory(QString &directory)
 
 void MainWindow::openFile(const QString &filePath)
 {
+    // Currently if you delete a file that is opened in another tab, and that tab is not the active one, it deletes, but if you go back to its tab and save, it creates the file again
     if(filePath.isEmpty()) {
         QMessageBox::warning(this,
                              tr("Warning"),
@@ -209,15 +209,21 @@ void MainWindow::openFile(const QString &filePath)
 
     this->ui->actionSave->setEnabled(true); // if they successfully opened a file, the save button can be used for it
 
+    if(this->ui->stackedWidget->currentIndex() == 0){
+        this->ui->stackedWidget->setCurrentIndex(1); // show the page for the editors... not the page saying open a file to begin
+    }
+
+    QFileInfo fileDirectory{filePath};
+    currentDirectory.setPath(fileDirectory.path());
+
     editor* nextPage = new editor(this->ui->openEditorsTabWidget);
     nextPage->setObjectName(filePath);
     openEditor = nextPage;
 
 
     int newTab = this->ui->openEditorsTabWidget->addTab(nextPage, file.fileName());
-    qDebug() << "New tab index: " << newTab;
-    this->ui->tabWidget->setCurrentIndex(newTab);
-
+    this->ui->openEditorsTabWidget->setCurrentIndex(newTab);
+    // IM KEEPING THIS COMMENT JUST TO REMIND MYSELF, CHANGE OBJECT NAMES FOR UI, IT WASNT CHANGING TAB CAUSE YOU WERE CALLING IT ON THE TERMINAL TAB WIDGET
 
     nextPage->openFile(file);
 
@@ -226,33 +232,32 @@ void MainWindow::openFile(const QString &filePath)
     this->ui->fileTreeDockWidget->showNormal();
     this->ui->terminalDockWidget->showNormal(); // shows both docks, file explorer, and output
 
-    updateTerminalAndOutput();
+    updateTerminalAndOutput(QFileInfo(openEditor->fileName()).absolutePath());
 }
 
-void MainWindow::updateTerminalAndOutput()
+void MainWindow::updateTerminalAndOutput(const QString& path)
 {
     if(process->state() == QProcess::Running){
-        process->setWorkingDirectory(QFileInfo(openEditor->fileName()).absolutePath());
+
+        process->setWorkingDirectory(path);
     }
-    // else if(process->state() == QProcess::Starting){
-    // }
     else if(process->state() == QProcess::NotRunning){
         // if the process isnt running, initialize it
-        initTerminalBox();
+        initTerminalBox(path);
     }
 }
 
 void MainWindow::openFolderDialog()
 {
     // if they try to open folder while working on something that is not saved, it asks to save beforehand
-    /*if(!ui->editorWidget->getText().isEmpty() && this->ui->editorWidget->getPte()->document()->isModified()){
+    if(openEditor != nullptr && openEditor->unsavedChanges()){
         QMessageBox::StandardButton saveFileQuestion = QMessageBox::question(this, tr("Save Changes?"), tr("Would you like To Save Changes Before Opening a New Folder?")
                                                                              , QMessageBox::Save | QMessageBox::Discard, QMessageBox::Save);
 
         // TODO: add save options, if either never save or always open file in same tab call save instead
-        if(saveFileQuestion == QMessageBox::Save) saveFile();
+        if(saveFileQuestion == QMessageBox::Save) openEditor->saveFile();
     }
-    */
+
 
     QString dir = QFileDialog::getExistingDirectory(this,
                                                     tr("Open Directory"),
@@ -264,9 +269,14 @@ void MainWindow::openFolderDialog()
         return;
     }
 
-    this->ui->stackedWidget->setCurrentWidget(this->ui->page_2); // sets the page to the text editor page
+    currentDirectory.setPath(dir);
+
+    // if you open a folder, there are no more open tabs, need to clear
+    deleteAllTabs();
+
+    this->ui->stackedWidget->setCurrentIndex(1); // sets the page to the text editor page
     this->ui->fileTreeDockWidget->showNormal();
-    updateTerminalAndOutput();
+    updateTerminalAndOutput(dir);
 
     getAllFilesInDirectory(dir);
 }
@@ -282,7 +292,6 @@ void MainWindow::openFileWhileEditing(const QString& path){
         if(saveQuestion == QMessageBox::Save) saveFile();
     }
     */
-    qDebug()<< "Not Implemented";
     openFile(path);
 }
 
@@ -329,9 +338,7 @@ void MainWindow::showCustomContextMenu(const QPoint &pos){
         contextMenu.addAction(&openAction);
     }
 
-
     contextMenu.exec(this->ui->fileListTree->viewport()->mapToGlobal(pos));
-
 }
 
 
@@ -355,27 +362,31 @@ void MainWindow::createPythonFile(const QPoint &clickPoint) {
 
 
     // connects return pressed signal to create the file
-    connect(fileNameLine, &QLineEdit::returnPressed, this, [this, fileNameLine]() {
+    connect(fileNameLine, &QLineEdit::returnPressed, this, [this, fileNameLine](){
         QString fileName = fileNameLine->text();
         if (!fileName.endsWith(".py")) {
             fileName += ".py";
         }
 
-        QDir filePath = QFileInfo(openEditor->fileName()).dir();
-        QFile file(filePath.absolutePath() + "/" + fileName);
+        const QString path = currentDirectory.absolutePath() + "/" + fileName;
+        QFile file{path};
         if (!file.open(QIODevice::WriteOnly)) {
-            QString error{QString( "Unable to open file ") + file.errorString()};
+
+            QString error{QString("Unable to open file ") + file.errorString()};
             QMessageBox::warning(this, tr("Error"), error.toStdString().c_str());
             // delete lineedit and return if error opening file
             delete fileNameLine;
-            return;
+
         }
-        file.close();
-        fileNameLine->deleteLater();
+        else{
+            file.close();
+            openFile(path);
+            fileNameLine->deleteLater();
+        }
     });
 
     // deletes line edit if user clicks out of it, or if it loses focus in any way
-    connect(fileNameLine, &QLineEdit::editingFinished, this, [fileNameLine]() {
+    connect(fileNameLine, &QLineEdit::editingFinished, this, [fileNameLine](){
         fileNameLine->deleteLater();
     });
 }
@@ -396,7 +407,6 @@ void MainWindow::createTextFile(const QPoint &clickPoint) {
 
     fileNameLine->setSelection(0, fileDefaultText.length()-4 ); // removes the .txt suffix in the default selection so user can auto change file name
 
-
     // connects return pressed signal to create the file
     connect(fileNameLine, &QLineEdit::returnPressed, this, [this, fileNameLine]() {
         QString fileName = fileNameLine->text();
@@ -404,8 +414,9 @@ void MainWindow::createTextFile(const QPoint &clickPoint) {
             fileName += ".txt";
         }
 
-        QDir filePath = QFileInfo(openEditor->fileName()).dir();
-        QFile file(filePath.absolutePath() + "/" + fileName);
+
+        const QString path = currentDirectory.absolutePath() + "/" + fileName;
+        QFile file{path};
         if (!file.open(QIODevice::WriteOnly)) {
 
             QString error{QString("Unable to open file ") + file.errorString()};
@@ -415,6 +426,7 @@ void MainWindow::createTextFile(const QPoint &clickPoint) {
             return;
         }
         file.close();
+        openFile(path);
         fileNameLine->deleteLater();
     });
 
@@ -533,19 +545,11 @@ void MainWindow::connectSignals(){ // relying on the connection of slots that th
         this->ui->fileTreeDockWidget->showNormal();
     });
     connect(this->ui->actionFind_Replace, &QAction::triggered, this, [this]{
-        // qDebug()<< "Not Implemented";
         if(openEditor == nullptr) return;
         openEditor->showSearchAndReplace();
-
-        // if(currentFile.isEmpty()) return;
-        // searchReplaceWidget->showWidget();
-        // searchReplaceWidget.showWidget();
-
-        // adjustSearchLineEditPosition(); // so it is in the correct position based on the window size
     });
 
     // END OF MENU BAR ACTIONS
-
 
     connect(this->ui->runFileButton, &QPushButton::pressed, this, &MainWindow::runButton);
     connect(this->ui->inputTerminalCommand, &QLineEdit::returnPressed, this, &MainWindow::writeToTerminal);
@@ -578,17 +582,17 @@ void MainWindow::newTextFile()
                                                     );
 
     // do nothing if they cancel, maybe show message warning later on
-    if (fileName.isEmpty()) {
+    if (fileName.isEmpty()){
         return;
     }
 
     // makes sure file has txt extention
-    if (!fileName.endsWith(".txt")) {
+    if (!fileName.endsWith(".txt")){
         fileName += ".txt";
     }
 
     QFile file(fileName);
-    if (!file.open(QIODevice::WriteOnly)) {
+    if (!file.open(QIODevice::WriteOnly)){
         QString error{"Failed to create the file: "+ file.errorString()};
         QMessageBox::warning(this, tr("Error"), tr(error.toStdString().c_str()));
         return;
@@ -596,10 +600,23 @@ void MainWindow::newTextFile()
 
     file.close();
 
+
     openFile(fileName);
     getAllFilesInDirectory();
 }
 
 void MainWindow::showTerminal(){
     this->ui->terminalDockWidget->showNormal(); // if they press new terminal, it shows the widget
+}
+
+void MainWindow::deleteAllTabs(){
+    auto tabWidget = this->ui->openEditorsTabWidget;
+    while(tabWidget->count() != 0){
+        editor* cur = qobject_cast<editor*>(tabWidget->widget(0));
+        tabWidget->removeTab(0);
+        cur->deleteLater();
+    }
+
+    // it should be deleted by now, but setting it to nullptr for any checks that occur elsewhere
+    openEditor = nullptr;
 }

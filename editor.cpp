@@ -66,10 +66,7 @@ editor::editor(QTabWidget *parent)
     connect(textEdit->verticalScrollBar(), &QScrollBar::valueChanged, this, &editor::synchronizeScrollBars);
     // connects the scroll bars of the text box the user types in with the line number text
 
-
-    connect(textEdit, &QPlainTextEdit::modificationChanged, this, [this](bool){
-        updateTabTitle();
-    });
+    connect(textEdit, &QPlainTextEdit::modificationChanged, this, &editor::updateTabTitle);
 
     connect(textEdit, &QPlainTextEdit::blockCountChanged, this, &editor::calculateNumberOfLines);
 
@@ -349,7 +346,7 @@ void editor::updateTabTitle()
     if(unsavedChanges()){
         QString unsavedChangesText{"*(" +currentFile + ")"};
         // parent->setTabText(parent->currentIndex(), unsavedChangesText);
-        int index = parent->indexOf(this);
+        int index = parent->indexOf(this); // should be the current index always but for some reason it wasnt, maybe it was another part acting up, not this
 
         parent->setTabText(index, unsavedChangesText);
             // (tr(unsavedWindowTitle.toStdString().c_str()));

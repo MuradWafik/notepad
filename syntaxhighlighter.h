@@ -77,7 +77,6 @@ private:
     // since if you adding to the end, no need to redo all highlights
     // but if its from an earlier line, probably better to do so and clear the set of past matches
 
-
 };
 
 #endif // SYNTAXHIGHLIGHTER_H

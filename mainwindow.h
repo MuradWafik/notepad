@@ -34,9 +34,10 @@ private:
     void getAllFilesInDirectory(QString &directory);
     void setUIChanges();
 
-    void initTerminalBox();
+    void initTerminalBox(const QString& path);
     void connectSignals();
 
+    void deleteAllTabs();
 
 private slots:
     void openFileAction();
@@ -55,7 +56,7 @@ private slots:
 
     void openFile(const QString &filePath);
 
-    void updateTerminalAndOutput();
+    void updateTerminalAndOutput(const QString& path);
 
     void openFolderDialog();
 
@@ -77,6 +78,8 @@ private:
     editor* openEditor = nullptr;
 
     QLabel* lineAndColStatusLabel;
+
+    QDir currentDirectory;
 
     // QLabel* searchAndReplaceStatusLabel; // the bottom status bar for text occurunces replaced, i gueess disregard for now?
 

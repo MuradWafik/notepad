@@ -71,7 +71,7 @@
            <enum>QTabWidget::TabShape::Rounded</enum>
           </property>
           <property name="currentIndex">
-           <number>0</number>
+           <number>-1</number>
           </property>
           <property name="iconSize">
            <size>
@@ -88,26 +88,6 @@
           <property name="tabBarAutoHide">
            <bool>false</bool>
           </property>
-          <widget class="QWidget" name="tab">
-           <property name="font">
-            <font>
-             <family>Courier 10 Pitch</family>
-            </font>
-           </property>
-           <attribute name="title">
-            <string>Tab 1</string>
-           </attribute>
-          </widget>
-          <widget class="QWidget" name="tab_2">
-           <property name="font">
-            <font>
-             <family>Courier 10 Pitch</family>
-            </font>
-           </property>
-           <attribute name="title">
-            <string>Tab 2</string>
-           </attribute>
-          </widget>
          </widget>
         </item>
        </layout>
@@ -203,7 +183,7 @@
       <number>0</number>
      </property>
      <item>
-      <widget class="QTabWidget" name="tabWidget">
+      <widget class="QTabWidget" name="terminalTabWidget">
        <property name="currentIndex">
         <number>0</number>
        </property>

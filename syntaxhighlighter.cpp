@@ -2,7 +2,12 @@
 #include <QTextBlock>
 #include <QTextCursor>
 SyntaxHighlighter::SyntaxHighlighter(QPlainTextEdit* pte) : pte(pte)
-{}
+{
+    // cursor = pte->textCursor();
+    // keeping an instance variable completly breaks the app, typing makes text invisible being adding to the end,
+    // highlighting starts being inconsistent and some characters are only partially highlighted somehow
+    // cursor{pte->document()};
+}
 
 
 void SyntaxHighlighter::searchTextForMatches(qsizetype startOffset)
@@ -23,10 +28,15 @@ void SyntaxHighlighter::searchTextForMatches(qsizetype startOffset)
 void SyntaxHighlighter::highlightText(qsizetype startOffset)
 {
     // doesnt seem to work on its own, so now i re-set the flag (and block signals so tab title doesnt freak out)
-    pte->document()->blockSignals(true); // stops the highlighting from emiting a textchange signal
+
+    QTextDocument* doc = pte->document();
+    doc->blockSignals(true); // stops the highlighting from emiting a textchange signal
+
+    // cursor.beginEditBlock();
 
     bool docModifiedBeforeHand = pte->document()->isModified();
-    qDebug() << docModifiedBeforeHand;
+
+    QSet<match> emptySet;
     // old data is useless if you are editing at an earlier point
     // if(oldOffset <= startOffset || startOffset == 0){
 
@@ -55,16 +65,17 @@ void SyntaxHighlighter::highlightText(qsizetype startOffset)
         extractStringsAndComments(lineText, lineStartPos);
     }
 
-    pte->document()->blockSignals(false); // reenables signals
-    pte->document()->setModified(docModifiedBeforeHand);
+
+    // cursor.endEditBlock();
+
+    doc->blockSignals(false); // reenables signals
+    doc->setModified(docModifiedBeforeHand);
+
 }
 
 void SyntaxHighlighter::highlightType(const QSet<match>& toHighlight, const QColor& color)
 {
-
-    QTextDocument *document = pte->document();
-
-    QTextCursor cursor{document};
+    QTextCursor cursor{pte->document()};
     QTextCharFormat format{};
     format.setForeground(color);
 
@@ -85,9 +96,6 @@ void SyntaxHighlighter::extractStringsAndComments(const QString& line, int lineO
     bool inString = false;
     int commentStart = -1;
 
-    QTextCursor cursor{pte->document()};
-    QTextCharFormat format{};
-
     for (int i = 0; i < line.length(); ++i) {
         QChar c = line[i];
         if (c == '"') {
@@ -99,6 +107,8 @@ void SyntaxHighlighter::extractStringsAndComments(const QString& line, int lineO
         }
     }
 
+    QTextCursor cursor{pte->document()};
+    QTextCharFormat format{};
     // highlighting strings before the comment
     format.setForeground(stringColor);
     // inString = false;
@@ -106,7 +116,9 @@ void SyntaxHighlighter::extractStringsAndComments(const QString& line, int lineO
     for (int i = 0; i < iterations; ++i) {
         if (line[i] == '"') {
             int start = i++;
-            while ((i < iterations) && (line[i] != '"')) { ++i; }
+            while ((i < iterations) && (line[i] != '"')) {
+                ++i;
+            }
             if (i < iterations) ++i;
 
             int globalStart = lineOffset + start;
@@ -133,6 +145,7 @@ void SyntaxHighlighter::extractStringsAndComments(const QString& line, int lineO
 
 void SyntaxHighlighter::resetFormating(qsizetype start){
     if(pte == nullptr) return;
+
     QTextCursor cursor{pte->document()};
     QTextCharFormat format{};
     format.setForeground(Qt::white);
